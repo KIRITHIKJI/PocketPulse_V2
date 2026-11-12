@@ -2,6 +2,118 @@
 
 Durable project state. Update before a context reset or at the end of each work session.
 Source of truth for requirements: `PROJECT_SPEC.md`. Working rules: `CLAUDE.md`.
+**V2:** `doc/V2_BRIEF.md` (decisions) and `doc/V2_SPEC.md` (the plan). The V2 section below comes
+first; everything after it is V1 history.
+
+## V2
+
+Supabase project for V2: `qdoyqcvzhxfsmwrcbsjs` (`pocketpulse-v2`, region **ap-south-1 / Mumbai**,
+checked with `supabase projects list` on 2026-11-12; what `.env.local` points at). All 13 V1
+migrations are pushed there and the e2e accounts exist there (your confirmation). V1
+(`qzmqvytrekenzciasvph`) is live and must never be connected to.
+
+### Phase 1 — inspection and specification (2026-11-12) ✅
+
+- No application code, tests, dependencies, migrations or database touched. Added
+  `doc/V2_SPEC.md`; updated this file.
+- **Findings** (details in `doc/V2_SPEC.md`):
+  - Credit cards and loans fit the existing transaction types: card purchase = expense on the card
+    account, bill = transfer; a loan is an account and every loan movement is a transfer. Only new
+    account kinds and a few columns.
+  - Reconciliation needs two new types (`adjustment_in` / `adjustment_out`), a `reconciliations`
+    table, one RPC, and `wallet_balances` updated.
+  - Forecasts to remove: `expectedEndBalancePaise`/`endBalanceAssumption` and `runOutInDays` in
+    `safe-to-spend.ts`, the run-out branch in `survival.ts`, `goalForecast` in `savings.ts`; plus,
+    proposed, `projectedPaise` in `budgets.ts`. 4 screens, 4 unit-test files.
+  - The Intelligence Feed and reviews can be built from existing domain functions with no new
+    arithmetic.
+  - The V2 setup commit (`6e15776`) deleted `doc/DESIGN_PLAN.md`, `doc/REDESIGN_BRIEF.md`,
+    `doc/CODEBASE_REPORT.md`, `doc/PHASE_PROMPTS.md`, `doc/FEATURE_REPORT.md`, which REDESIGN_V2's
+    rules still reference. **Restored unchanged from `b8669a3`** (by your instruction).
+  - The import of V1 data must preserve `transactions.created_at`, which the guard trigger resets on
+    insert; streaks and daily XP depend on it.
+  - Recorded full e2e runs took 10–15 min (39 min worst), not an hour. Critical path: the two serial
+    ledger projects on one shared account.
+- **Approved, with your decisions** (`doc/V2_SPEC.md` §15, D1–D11):
+  - Tracked balance = net position.
+  - Safe to Spend's base excludes money lent out until it comes back (unit test in 2B).
+  - V1 `card` wallets stay debit cards.
+  - Budget rupee projection dropped; Survival "on track" kept, worded about the past 14 days.
+  - Category prefill kept.
+  - Loan write-off / forgiveness count as spending / income, only when you confirm.
+  - Reports get a "Corrections" line (opening + income + refunds − spending ± corrections = closing,
+    tested in 2B).
+  - Deleted docs restored.
+  - Shared signed-in shell target ≤ 200 KB gzip by the end of Phase 3.
+  - Still open: Q9, the AI provider (Phase 5).
+- Phase 2A is test infrastructure only; forecast removal moved to 2B.
+
+**Baseline (2026-11-12, commit `6e15776`, this machine, each run once, sequentially):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 110 s |
+| `npm run typecheck` | ✅ | 65 s |
+| `npm test` | ✅ 36 files / 918 tests | 78 s (vitest 66.5 s; 69 % jsdom setup) |
+| `npm run build` | ✅ 42 pages | 53 s |
+| E2E | not run (by instruction) | — |
+
+First-load JS (raw / gzip KB, computed from the Turbopack manifests; full table in `doc/V2_SPEC.md`
+§9): public pages 596–604 / 187–189; signed-in screens 787–848 / 246–267. Largest: `/home` and
+`/categories` 848 / 267, `/add` 844 / 266. Smallest signed-in: `/settings/data` 787 / 246.
+
+### Checklist for Phases 2–6
+
+**Phase 2A — faster tests (test infrastructure only)**
+- [ ] One V2 test account per money spec (script refuses any other project, key from `.env.local`,
+      never printed); per-account storage states; money specs in parallel
+- [ ] Money journeys at one viewport except A, G and navigation; merge per-route shell/auth checks
+      into the a11y visit; no `waitForTimeout`/`networkidle`; fresh server per run
+- [ ] `@smoke` tag on the ~20 tests in `doc/V2_SPEC.md` §10; `npm run test:smoke`
+- [ ] Full e2e under 15 min (target 6–9), measured; smoke measured
+- [ ] Pure unit tests in the `node` environment
+- [ ] `scripts/route-js.mjs` for first-load JS
+
+**Phase 2B — forecast removal, loans, credit cards, reconciliation**
+- [ ] Remove expected end balance, run-out warning, survival run-out branch, goal finish date,
+      budget rupee projection; Survival "on track" about the past; "Forecast" → "Scheduled"
+- [ ] Safe to Spend base without money lent out + unit test (D1)
+- [ ] Report "Corrections" line + reconciliation identity tests (D9)
+- [ ] Migration (`doc/V2_SPEC.md` §5) + DB tests (RLS, RPC idempotency, `wallet_balances` = domain
+      incl. adjustments); you push it to V2
+- [ ] Domain: new kinds/types, `accountDelta`, `summarizePeriod`, report, CSV, export
+- [ ] Mutation layer + offline queue: `reconcile` command
+- [ ] `/accounts/[id]`: Check balance (find it / correction with Undo), Pay card bill, loan actions
+- [ ] Smoke additions: card purchase + bill, loan borrow + repay, correction + Undo
+- [ ] Full e2e suite once, clean
+
+**Phase 3 — redesign (prompts 3A–3F)**
+- [ ] 3A tokens, primitives, 8-link sidebar, Add sheet, hubs, mobile bar
+- [ ] 3B Home
+- [ ] 3C emblem directions (your choice), RankEmblem/AchievementBadge, Player status (your approval)
+- [ ] 3D Missions, Achievements, Rewards, feedback moments
+- [ ] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring
+- [ ] 3F Transactions, Accounts, Categories, Reports, Reminders, Settings, auth, onboarding; mobile
+      and consistency passes
+- [ ] Shared signed-in shell ≤ 200 KB gzip (from 246)
+
+**Phase 4**
+- [ ] 4A Intelligence Feed + Reviews (`feed_dismissals` migration)
+- [ ] 4B Data labels + learned habits (`learned_suggestions`, `category_rules.origin` migration)
+
+**Phase 5**
+- [ ] Provider check against the AI rules (Q9); stop and report if none qualifies; otherwise opt-in
+      Analyst
+
+**Phase 6**
+- [ ] Full checks incl. full e2e and DB tests
+- [ ] V1 → V2 import from your V1 JSON export (owner remap, `created_at` preserved, money check
+      before commit); you run it
+- [ ] Size report vs this baseline; README for V2
+
+---
+
+# V1 history
 
 _Last updated: 2026-11-10 — Pre-deploy check: ledger e2e passes on desktop and mobile after two test-race fixes; Vercel region `bom1` confirmed; env var names listed (see "Pre-deploy check"). Before that, Design 4 final check: sidebar fits 768 px, reward, offline and speed fixes; the complete e2e suite passed in one run (398 passed, 9 skipped, 0 failed; see "Design 4 final check"). Before that, 2026-11-07 — Design 4 of 4, the last design phase (every remaining screen, sidebar groups, full QA; see "Design 4"). No migration. Before that, Design 3 of 4 (Player status, Missions, Achievements, Rewards hub, the feedback ladder, permanent achievements, Safe to Spend on Home; see "Design 3"). Migration `20261106000200_missions` is applied on the hosted project (you ran `db push` on 2026-11-07). Before that, Design 2 of 4 (Home, Quick Add, mobile bar, rewards that follow Undo; see "Design 2"). Before that, Design 1 (audit, `doc/DESIGN_PLAN.md`, foundation). Before that, Code tidy (no behaviour change). Before that, Speed fixes 2. Migrations 0100–1000, 20261105000100 (ledger keyset index) and 20261106000100 (`wallet_balances`) are applied on the hosted project (you ran `db push`; `migration list` confirmed). The app is not deployed yet, so nothing has been tried on a real phone._
 
