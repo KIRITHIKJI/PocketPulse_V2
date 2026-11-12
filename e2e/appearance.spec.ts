@@ -1,11 +1,11 @@
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 
-import { AUTH_FILE, E2E_EMAIL, E2E_PASSWORD, SIGNED_IN_SKIP_REASON } from "./routes";
+import { LEDGER_PASSWORD, LEDGER_SKIP_REASON, ledgerTest } from "./ledger";
 
-// Theme and motion live on the shared test profile, and the motion spec depends on that profile
-// not changing under it, so these run in the serial ledger projects, never alongside it.
-test.skip(!E2E_EMAIL || !E2E_PASSWORD, SIGNED_IN_SKIP_REASON);
-test.use({ storageState: AUTH_FILE });
+// Theme and motion live on the profile, and the motion spec depends on its profile not changing
+// under it, so this spec writes only its own account's profile (e2e/ledger.ts).
+const test = ledgerTest("appearance");
+test.skip(!LEDGER_PASSWORD, LEDGER_SKIP_REASON);
 
 /** Clicks and waits for the server action that saves the choice to the profile. */
 async function clickAndSave(page: Page, click: () => Promise<void>) {
@@ -20,15 +20,16 @@ async function clickAndSave(page: Page, click: () => Promise<void>) {
   expect((await saved).ok()).toBe(true);
 }
 
-// Theme and motion are saved to the (shared) test profile, so these run on one project only,
-// serially, and put the defaults back.
+// Theme and motion are saved to the test profile, so these run on one project only, serially,
+// and put the defaults back.
 test.describe("synced appearance preferences", () => {
   test.describe.configure({ mode: "serial" });
-  test.skip(({ isMobile }) => isMobile, "Writes the shared test profile; runs on desktop only.");
+  test.skip(({ isMobile }) => isMobile, "Writes the test profile; runs on desktop only.");
 
   test("theme defaults to midnight, persists, and follows the account to a new device", async ({
     page,
     browser,
+    account,
   }) => {
     await page.goto("/settings");
     const theme = page.getByRole("radiogroup", { name: "Theme" });
@@ -48,7 +49,7 @@ test.describe("synced appearance preferences", () => {
     expect(background).not.toBe("rgba(0, 0, 0, 0)");
 
     // A second "device": same account, empty local storage — the profile brings the theme.
-    const other = await browser.newContext({ storageState: AUTH_FILE });
+    const other = await browser.newContext({ storageState: account.stateFile });
     try {
       const otherPage = await other.newPage();
       await otherPage.evaluate(() => localStorage.clear()).catch(() => {});

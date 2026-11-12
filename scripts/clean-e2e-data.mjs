@@ -1,5 +1,5 @@
 /**
- * Clears what browser-test runs leave behind in the two e2e accounts: archived wallets, categories
+ * Clears what browser-test runs leave behind in the e2e accounts: archived wallets, categories
  * and goals with no money entries pointing at them.
  *
  * Shows what it would remove and changes nothing unless run with --apply:
@@ -12,6 +12,8 @@
  * tests use are candidates, so anything a person made is left alone.
  */
 /* eslint-disable no-console -- its output is the point: this script reports what it does. */
+import { readFileSync } from "node:fs";
+
 import { createClient } from "@supabase/supabase-js";
 
 process.loadEnvFile(".env.local");
@@ -24,6 +26,14 @@ const TEST_NAME =
 const accounts = [
   [process.env.E2E_EMAIL, process.env.E2E_PASSWORD],
   [process.env.E2E_USER_B_EMAIL, process.env.E2E_USER_B_PASSWORD],
+  // The money specs' own accounts (npm run e2e:accounts).
+  ...Object.entries(JSON.parse(readFileSync("e2e/ledger-accounts.json", "utf8"))).flatMap(
+    ([spec, viewports]) =>
+      viewports.map((viewport) => [
+        `pp-e2e-${spec}-${viewport}@example.test`,
+        process.env.E2E_LEDGER_PASSWORD,
+      ]),
+  ),
 ];
 
 async function all(query) {

@@ -1,12 +1,12 @@
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 
-import { AUTH_FILE, E2E_EMAIL, E2E_PASSWORD, SIGNED_IN_SKIP_REASON } from "./routes";
+import { LEDGER_PASSWORD, LEDGER_SKIP_REASON, ledgerTest } from "./ledger";
 
 // Phase 7 on the real project: sparse states, then real entries through to Insights, Money leaks
 // and history, with the same totals on every screen. The made-up word has no category, so the
-// entries are Unassigned too. Runs in the serial ledger projects and deletes what it saves.
-test.skip(!E2E_EMAIL || !E2E_PASSWORD, SIGNED_IN_SKIP_REASON);
-test.use({ storageState: AUTH_FILE });
+// entries are Unassigned too. Records on its own account and deletes what it saves.
+const test = ledgerTest("insights");
+test.skip(!LEDGER_PASSWORD, LEDGER_SKIP_REASON);
 test.describe.configure({ mode: "serial" });
 
 const WORD = "zzkopi";
@@ -34,8 +34,8 @@ async function deleteEntries(page: Page) {
   }
 }
 
-test.afterAll(async ({ browser }) => {
-  const page = await browser.newPage({ storageState: AUTH_FILE });
+test.afterAll(async ({ browser, account }) => {
+  const page = await browser.newPage({ storageState: account.stateFile });
   await deleteEntries(page);
   await page.close();
 });
@@ -72,68 +72,72 @@ test("one entry gives totals but no average, comparison or trend", async ({ page
   await deleteEntries(page);
 });
 
-test("Journey C: Insights, leaks and history agree on real entries", async ({ page }) => {
-  const count = 3;
-  const total = price * count;
-  await page.goto("/add/text");
-  const text = Array.from({ length: count }, () => `${WORD} ${price}`).join(", ");
-  await expect(async () => {
-    await page.getByRole("textbox", { name: "What did you spend?" }).fill(text);
-    await page.getByRole("button", { name: "Review entries" }).click();
-    await expect(page.getByRole("heading", { name: /^Check/ })).toBeVisible({ timeout: 1_000 });
-  }).toPass();
-  await page.getByRole("button", { name: `Save all ${count} entries · ₹${total}` }).click();
-  await expect(toast(page)).toContainText(`Saved ${count} entries`);
+test(
+  "Journey C: Insights, leaks and history agree on real entries",
+  { tag: "@smoke" },
+  async ({ page }) => {
+    const count = 3;
+    const total = price * count;
+    await page.goto("/add/text");
+    const text = Array.from({ length: count }, () => `${WORD} ${price}`).join(", ");
+    await expect(async () => {
+      await page.getByRole("textbox", { name: "What did you spend?" }).fill(text);
+      await page.getByRole("button", { name: "Review entries" }).click();
+      await expect(page.getByRole("heading", { name: /^Check/ })).toBeVisible({ timeout: 1_000 });
+    }).toPass();
+    await page.getByRole("button", { name: `Save all ${count} entries · ₹${total}` }).click();
+    await expect(toast(page)).toContainText(`Saved ${count} entries`);
 
-  // The sentence comes from the entries, and opens exactly them.
-  await page.goto("/insights?period=this_month");
-  const sentence = `You logged ${LABEL} ${count} times for ₹${price} each: ₹${total} this month.`;
-  const card = main(page).getByTestId("insight-card").filter({ hasText: sentence });
-  await expect(card).toBeVisible();
+    // The sentence comes from the entries, and opens exactly them.
+    await page.goto("/insights?period=this_month");
+    const sentence = `You logged ${LABEL} ${count} times for ₹${price} each: ₹${total} this month.`;
+    const card = main(page).getByTestId("insight-card").filter({ hasText: sentence });
+    await expect(card).toBeVisible();
 
-  // The Unassigned group is visible, has its own row, and links to the queue.
-  const unassigned = main(page).getByTestId("category-row").filter({ hasText: "Unassigned" });
-  await expect(unassigned).toContainText(`₹${total}`);
-  await expect(
-    main(page).getByRole("link", { name: "Sort these in the Uncategorized queue" }),
-  ).toHaveAttribute("href", "/categories?tab=uncategorized");
+    // The Unassigned group is visible, has its own row, and links to the queue.
+    const unassigned = main(page).getByTestId("category-row").filter({ hasText: "Unassigned" });
+    await expect(unassigned).toContainText(`₹${total}`);
+    await expect(
+      main(page).getByRole("link", { name: "Sort these in the Uncategorized queue" }),
+    ).toHaveAttribute("href", "/categories?tab=uncategorized");
 
-  await card.click();
-  await expect(page).toHaveURL(/\/transactions\?/);
-  await expect(main(page).getByTestId("history-summary")).toContainText(
-    `${count} entries match · net spending ₹${total}`,
-  );
+    await card.click();
+    await expect(page).toHaveURL(/\/transactions\?/);
+    await expect(main(page).getByTestId("history-summary")).toContainText(
+      `${count} entries match · net spending ₹${total}`,
+    );
 
-  // Category card → Journey C page → the same total, count and entries.
-  await page.goto("/insights?period=this_month");
-  await main(page)
-    .getByTestId("category-row")
-    .filter({ hasText: "Unassigned" })
-    .getByRole("link")
-    .first()
-    .click();
-  await expect(main(page).getByRole("heading", { name: "Unassigned", level: 1 })).toBeVisible();
-  await expect(main(page).getByTestId("category-net")).toHaveText(`₹${total}`);
-  await expect(main(page).getByTestId("category-count")).toHaveText(String(count));
+    // Category card → Journey C page → the same total, count and entries.
+    await page.goto("/insights?period=this_month");
+    await main(page)
+      .getByTestId("category-row")
+      .filter({ hasText: "Unassigned" })
+      .getByRole("link")
+      .first()
+      .click();
+    await expect(main(page).getByRole("heading", { name: "Unassigned", level: 1 })).toBeVisible();
+    await expect(main(page).getByTestId("category-net")).toHaveText(`₹${total}`);
+    await expect(main(page).getByTestId("category-count")).toHaveText(String(count));
 
-  // Money leaks: the same group, the same total, a what-if, and its entries in history.
-  await page.goto("/insights/leaks?period=this_month");
-  const group = main(page).getByTestId("leak-group").filter({ hasText: WORD });
-  await expect(group).toContainText(`₹${total}`);
-  await expect(group.getByTestId("what-if")).toHaveText(
-    `If you logged one fewer ${LABEL} entry at ₹${price} in a period like this one, you’d spend ₹${price} less.`,
-  );
-  await group.getByRole("button", { name: "One more" }).click();
-  await expect(group.getByTestId("what-if")).toContainText(`₹${price * 2} less`);
-  await group.getByText(`See the ${count} entries`).click();
-  await group.getByRole("link", { name: "Open in Transactions" }).click();
-  await expect(main(page).getByTestId("history-summary")).toContainText(
-    `${count} entries match · net spending ₹${total}`,
-  );
-  await expect(main(page).getByTestId("history-narrowing")).toContainText("small purchases");
+    // Money leaks: the same group, the same total, a what-if, and its entries in history.
+    await page.goto("/insights/leaks?period=this_month");
+    const group = main(page).getByTestId("leak-group").filter({ hasText: WORD });
+    await expect(group).toContainText(`₹${total}`);
+    await expect(group.getByTestId("what-if")).toHaveText(
+      `If you logged one fewer ${LABEL} entry at ₹${price} in a period like this one, you’d spend ₹${price} less.`,
+    );
+    await group.getByRole("button", { name: "One more" }).click();
+    await expect(group.getByTestId("what-if")).toContainText(`₹${price * 2} less`);
+    await group.getByText(`See the ${count} entries`).click();
+    await group.getByRole("link", { name: "Open in Transactions" }).click();
+    await expect(main(page).getByTestId("history-summary")).toContainText(
+      `${count} entries match · net spending ₹${total}`,
+    );
+    await expect(main(page).getByTestId("history-narrowing")).toContainText("small purchases");
 
-  await deleteEntries(page);
-});
+    await deleteEntries(page);
+  },
+);
 
 test("a chart bar opens the entries behind it, without console errors", async ({ page }) => {
   const errors: string[] = [];

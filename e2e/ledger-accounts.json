@@ -1,0 +1,11 @@
+{
+  "transactions": ["desktop", "mobile"],
+  "transactions-batch": ["desktop", "mobile"],
+  "insights": ["desktop"],
+  "plan": ["desktop"],
+  "motion": ["desktop"],
+  "report": ["desktop", "mobile"],
+  "rewards": ["desktop", "mobile"],
+  "appearance": ["desktop"],
+  "offline": ["desktop", "mobile"]
+}

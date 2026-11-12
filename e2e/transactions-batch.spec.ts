@@ -1,13 +1,13 @@
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 
-import { AUTH_FILE, E2E_EMAIL, E2E_PASSWORD, SIGNED_IN_SKIP_REASON } from "./routes";
+import { LEDGER_PASSWORD, LEDGER_SKIP_REASON, ledgerTest } from "./ledger";
 
 // Phase 6: typed and voice entry on the real project. Like transactions.spec.ts this asserts
-// exact balance changes, so it runs in the serial ledger projects, and every test undoes what it
-// saves. Voice uses a stand-in for the browser's speech recognition: the app's handling is real,
+// exact balance changes, so it records on its own account per viewport, and every test undoes what
+// it saves. Voice uses a stand-in for the browser's speech recognition: the app's handling is real,
 // but no microphone or speech service is exercised here.
-test.skip(!E2E_EMAIL || !E2E_PASSWORD, SIGNED_IN_SKIP_REASON);
-test.use({ storageState: AUTH_FILE });
+const test = ledgerTest("transactions-batch");
+test.skip(!LEDGER_PASSWORD, LEDGER_SKIP_REASON);
 test.describe.configure({ mode: "serial" });
 
 const main = (page: Page) => page.locator("#main");
@@ -34,35 +34,39 @@ async function review(page: Page, text: string) {
   }).toPass();
 }
 
-test("Journey B: typed entries are reviewed, saved together, and undone together", async ({
-  page,
-}) => {
-  const before = await balance(page);
-  const { first, second } = amounts();
+test(
+  "Journey B: typed entries are reviewed, saved together, and undone together",
+  { tag: ["@phone", "@smoke"] },
+  async ({ page }) => {
+    const before = await balance(page);
+    const { first, second } = amounts();
 
-  await page.goto("/add/text");
-  await review(page, `tea ${first}, bus ${second} yesterday`);
+    await page.goto("/add/text");
+    await review(page, `tea ${first}, bus ${second} yesterday`);
 
-  // Drafts only: nothing has been saved yet.
-  await expect(drafts(page)).toHaveCount(2);
-  await expect(drafts(page).first()).toContainText("From “tea");
-  await expect(drafts(page).first().getByRole("combobox", { name: "Category" })).toHaveValue(/\|/);
+    // Drafts only: nothing has been saved yet.
+    await expect(drafts(page)).toHaveCount(2);
+    await expect(drafts(page).first()).toContainText("From “tea");
+    await expect(drafts(page).first().getByRole("combobox", { name: "Category" })).toHaveValue(
+      /\|/,
+    );
 
-  // The user corrects a draft before confirming.
-  await drafts(page)
-    .first()
-    .getByLabel("Amount")
-    .fill(String(first + 5));
-  const total = first + 5 + second;
-  await page.getByRole("button", { name: `Save all 2 entries · ₹${total}` }).click();
-  await expect(toast(page)).toContainText(`Saved 2 entries · ₹${total}`);
-  await expect(page.getByRole("textbox", { name: "What did you spend?" })).toHaveValue("");
+    // The user corrects a draft before confirming.
+    await drafts(page)
+      .first()
+      .getByLabel("Amount")
+      .fill(String(first + 5));
+    const total = first + 5 + second;
+    await page.getByRole("button", { name: `Save all 2 entries · ₹${total}` }).click();
+    await expect(toast(page)).toContainText(`Saved 2 entries · ₹${total}`);
+    await expect(page.getByRole("textbox", { name: "What did you spend?" })).toHaveValue("");
 
-  // The toast's Undo removes both.
-  await toast(page).getByRole("button", { name: "Undo" }).click();
-  await expect(toast(page)).toContainText("Undone");
-  expect(await balance(page)).toBe(before);
-});
+    // The toast's Undo removes both.
+    await toast(page).getByRole("button", { name: "Undo" }).click();
+    await expect(toast(page)).toContainText("Undone");
+    expect(await balance(page)).toBe(before);
+  },
+);
 
 test("saving updates the balance by the total, then Undo restores it", async ({ page }) => {
   const before = await balance(page);
@@ -157,27 +161,31 @@ test.describe("the day is the user's, not the device's", () => {
   });
 });
 
-test("Home and the quick-add sheet lead to typed and voice entry", async ({ page }) => {
-  const routes = main(page).getByRole("navigation", { name: "Other ways to add" });
-  await page.goto("/home");
-  await routes.getByRole("link", { name: "Type it" }).click();
-  await expect(page).toHaveURL(/\/add\/text$/);
-  await page.goto("/home");
-  await routes.getByRole("link", { name: "Say it" }).click();
-  await expect(page).toHaveURL(/\/add\/voice$/);
+test(
+  "Home and the quick-add sheet lead to typed and voice entry",
+  { tag: "@phone" },
+  async ({ page }) => {
+    const routes = main(page).getByRole("navigation", { name: "Other ways to add" });
+    await page.goto("/home");
+    await routes.getByRole("link", { name: "Type it" }).click();
+    await expect(page).toHaveURL(/\/add\/text$/);
+    await page.goto("/home");
+    await routes.getByRole("link", { name: "Say it" }).click();
+    await expect(page).toHaveURL(/\/add\/voice$/);
 
-  await page.goto("/add");
-  const tile = page
-    .getByRole("list", { name: "Quick-add tiles" })
-    .getByRole("button", { name: /^Tea\b/ });
-  await expect(async () => {
-    await tile.click();
-    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 1_000 });
-  }).toPass();
-  await page.getByRole("dialog").getByRole("link", { name: "Type it" }).click();
-  await expect(page).toHaveURL(/\/add\/text$/);
-  await expect(page.getByRole("dialog")).toBeHidden();
-});
+    await page.goto("/add");
+    const tile = page
+      .getByRole("list", { name: "Quick-add tiles" })
+      .getByRole("button", { name: /^Tea\b/ });
+    await expect(async () => {
+      await tile.click();
+      await expect(page.getByRole("dialog")).toBeVisible({ timeout: 1_000 });
+    }).toPass();
+    await page.getByRole("dialog").getByRole("link", { name: "Type it" }).click();
+    await expect(page).toHaveURL(/\/add\/text$/);
+    await expect(page.getByRole("dialog")).toBeHidden();
+  },
+);
 
 test("the prompt's examples reach the review as written", async ({ page }) => {
   await page.goto("/add/text");
@@ -322,7 +330,7 @@ test("typing \u201ccall chai 15\u201d stays today, with no note", async ({ page 
   await page.getByRole("button", { name: "Back to edit" }).click();
 });
 
-test("voice: unsupported browsers get the typed route", async ({ page }) => {
+test("voice: unsupported browsers get the typed route", { tag: "@smoke" }, async ({ page }) => {
   await page.addInitScript(() => {
     Object.assign(window, { webkitSpeechRecognition: undefined, SpeechRecognition: undefined });
   });

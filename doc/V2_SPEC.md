@@ -674,8 +674,8 @@ not individual screens; the new hub navigation in Phase 3A should make the shell
    start unless asked, so a stale build can't decide a result.
 5. **No fixed waits.** Replace the 3 `waitForTimeout` calls and `networkidle` in the a11y spec with
    waits for the page's own ready signal.
-6. **Workers: 4 → 6** once accounts are separate (the rate limit was per account sign-in, and each
-   account now signs in once).
+6. **Workers stay at 4** (measured in 2A: at 6, long money journeys queued behind other pages on
+   the one `next start` server and ran out of their 30 s), with at most three money specs at once.
 
 Expected: about 6–9 minutes for the full run on this machine, measured and reported in Phase 2A, not
 assumed.

@@ -1,14 +1,16 @@
 import { existsSync } from "node:fs";
 
 import { type SupabaseClient, createClient } from "@supabase/supabase-js";
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 
-import { AUTH_FILE, E2E_EMAIL, E2E_PASSWORD, SIGNED_IN_SKIP_REASON } from "./routes";
+import { LEDGER_ACCOUNTS, LEDGER_PASSWORD, LEDGER_SKIP_REASON, ledgerTest } from "./ledger";
+import { E2E_EMAIL } from "./routes";
 
-// Rewards, reminders and account deletion on the real project. Account deletion only ever touches
-// a throwaway user this spec created through the admin API.
-test.skip(!E2E_EMAIL || !E2E_PASSWORD, SIGNED_IN_SKIP_REASON);
-test.use({ storageState: AUTH_FILE });
+// Rewards, reminders and account deletion on the real project, on this spec's own account per
+// viewport. Account deletion only ever touches a throwaway user this spec created through the
+// admin API.
+const test = ledgerTest("rewards");
+test.skip(!LEDGER_PASSWORD, LEDGER_SKIP_REASON);
 test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
@@ -23,11 +25,14 @@ const xpOf = async (page: Page) =>
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
 
-async function signedInClient(): Promise<SupabaseClient> {
+async function signedInClient(account: {
+  email: string;
+  password: string;
+}): Promise<SupabaseClient> {
   const client = createClient(url, publishable, { auth: { persistSession: false } });
   const { error } = await client.auth.signInWithPassword({
-    email: E2E_EMAIL!,
-    password: E2E_PASSWORD!,
+    email: account.email,
+    password: account.password,
   });
   if (error) throw new Error(`sign-in failed: ${error.code}`);
   return client;
@@ -78,108 +83,121 @@ async function unlockedXp(page: Page) {
   return sum;
 }
 
-test("daily XP follows the entries; achievements stay; re-adding never earns twice", async ({
-  page,
-}) => {
-  await deleteEntries(page);
-  await page.goto("/rewards");
-  await expect(main(page).getByTestId("reward-xp")).toBeVisible();
-  const without = await xpOf(page);
-  const achievementsBefore = await unlockedXp(page);
-
-  // Saving: one confirmation at a time, whatever the save earned.
-  await page.goto("/add/text");
-  await expect(async () => {
-    await page.getByRole("textbox", { name: "What did you spend?" }).fill(`${WORD} 50`);
-    await page.getByRole("button", { name: "Review entries" }).click();
-    await expect(page.getByRole("heading", { name: /^Check/ })).toBeVisible({ timeout: 1_000 });
-  }).toPass();
-  await page.getByRole("button", { name: /^Save 1 entry/ }).click();
-  await expect(toast(page)).toContainText("Saved");
-  for (let i = 0; i < 15; i += 1) {
-    expect(await popUps(page)).toBeLessThanOrEqual(1);
-    await page.waitForTimeout(200);
-  }
-
-  await page.goto("/rewards");
-  await expect(main(page).getByRole("heading", { name: "Today and this week" })).toBeVisible();
-  const xp = await xpOf(page);
-  expect(xp).toBeGreaterThanOrEqual(without);
-  await page.goto("/rewards/status");
-  await expect(main(page).getByTestId("streak-daily")).not.toHaveText(/^0/);
-  await page.goto("/rewards/achievements");
-  await expect(main(page).getByTestId("achievement")).toHaveCount(7);
-
-  // Same data, same XP, however many times it's worked out.
-  await page.goto("/rewards");
-  await page.reload();
-  await expect(main(page).getByTestId("reward-xp")).toBeVisible();
-  expect(await xpOf(page)).toBe(xp);
-
-  // Deleting the entry puts the daily XP back where it was; an achievement it unlocked stays.
-  // Re-adding earns the day once more, not twice.
-  const kept = (await unlockedXp(page)) - achievementsBefore;
-  for (let round = 0; round < 2; round += 1) {
+test(
+  "daily XP follows the entries; achievements stay; re-adding never earns twice",
+  { tag: "@smoke" },
+  async ({ page }) => {
     await deleteEntries(page);
     await page.goto("/rewards");
     await expect(main(page).getByTestId("reward-xp")).toBeVisible();
-    expect(await xpOf(page)).toBe(without + kept);
-    if (round === 0) {
-      await logEntry(page, `${WORD} 50`);
+    const without = await xpOf(page);
+    const achievementsBefore = await unlockedXp(page);
+
+    // Saving: one confirmation at a time, whatever the save earned.
+    await page.goto("/add/text");
+    await expect(async () => {
+      await page.getByRole("textbox", { name: "What did you spend?" }).fill(`${WORD} 50`);
+      await page.getByRole("button", { name: "Review entries" }).click();
+      await expect(page.getByRole("heading", { name: /^Check/ })).toBeVisible({ timeout: 1_000 });
+    }).toPass();
+    await page.getByRole("button", { name: /^Save 1 entry/ }).click();
+    await expect(toast(page)).toContainText("Saved");
+    for (let i = 0; i < 15; i += 1) {
+      expect(await popUps(page)).toBeLessThanOrEqual(1);
+      await page.waitForTimeout(200);
+    }
+
+    await page.goto("/rewards");
+    await expect(main(page).getByRole("heading", { name: "Today and this week" })).toBeVisible();
+    const xp = await xpOf(page);
+    expect(xp).toBeGreaterThanOrEqual(without);
+    await page.goto("/rewards/status");
+    await expect(main(page).getByTestId("streak-daily")).not.toHaveText(/^0/);
+    await page.goto("/rewards/achievements");
+    await expect(main(page).getByTestId("achievement")).toHaveCount(7);
+
+    // Same data, same XP, however many times it's worked out.
+    await page.goto("/rewards");
+    await page.reload();
+    await expect(main(page).getByTestId("reward-xp")).toBeVisible();
+    expect(await xpOf(page)).toBe(xp);
+
+    // Deleting the entry puts the daily XP back where it was; an achievement it unlocked stays.
+    // Re-adding earns the day once more, not twice.
+    const kept = (await unlockedXp(page)) - achievementsBefore;
+    for (let round = 0; round < 2; round += 1) {
+      await deleteEntries(page);
       await page.goto("/rewards");
       await expect(main(page).getByTestId("reward-xp")).toBeVisible();
-      expect(await xpOf(page)).toBe(xp);
+      expect(await xpOf(page)).toBe(without + kept);
+      if (round === 0) {
+        await logEntry(page, `${WORD} 50`);
+        await page.goto("/rewards");
+        await expect(main(page).getByTestId("reward-xp")).toBeVisible();
+        expect(await xpOf(page)).toBe(xp);
+      }
     }
-  }
-  await expect(main(page)).not.toContainText(/broke|lost your|don.t lose/i);
-});
+    await expect(main(page)).not.toContainText(/broke|lost your|don.t lose/i);
+  },
+);
 
-test("a mission can be skipped and brought back, and a review only counts once", async ({
-  page,
-}) => {
-  await page.goto("/rewards/missions");
-  const daily = main(page).getByTestId("missions-daily");
-  const mission = daily.locator('[data-testid="mission"][data-code="log_today"]');
-  await expect(mission).toBeVisible();
-  await mission.getByRole("button", { name: "Skip the Log today mission" }).click();
-  await expect(mission).toHaveCount(0);
-  await daily.getByRole("button", { name: "Bring back the Log today mission" }).click();
-  await expect(mission).toBeVisible();
+test(
+  "a mission can be skipped and brought back, and a review only counts once",
+  { tag: "@phone" },
+  async ({ page }) => {
+    await page.goto("/rewards/missions");
+    const daily = main(page).getByTestId("missions-daily");
+    const mission = daily.locator('[data-testid="mission"][data-code="log_today"]');
+    await expect(mission).toBeVisible();
+    await mission.getByRole("button", { name: "Skip the Log today mission" }).click();
+    await expect(mission).toHaveCount(0);
+    await daily.getByRole("button", { name: "Bring back the Log today mission" }).click();
+    await expect(mission).toBeVisible();
 
-  // On a phone the groups are one at a time; on a laptop all three columns show.
-  await expect(main(page).getByTestId("missions-once")).toBeAttached();
+    // On a phone the groups are one at a time; on a laptop all three columns show.
+    await expect(main(page).getByTestId("missions-once")).toBeAttached();
 
-  await page.goto("/rewards");
-  const review = main(page).getByRole("button", { name: "I’ve reviewed this week" });
-  if ((await review.count()) > 0) {
-    await review.click();
+    await page.goto("/rewards");
+    const review = main(page).getByRole("button", { name: "I’ve reviewed this week" });
+    if ((await review.count()) > 0) {
+      await review.click();
+      await expect(review).toHaveCount(0);
+      // The hub shows only the first few missions, open ones first, so a finished one can drop
+      // out of it; the Missions page lists every mission.
+      await page.goto("/rewards/missions");
+      await expect(
+        main(page)
+          .getByTestId("missions-weekly")
+          .locator('[data-testid="mission"][data-code="weekly_review"]'),
+      ).toHaveAttribute("data-state", "done");
+      await page.goto("/rewards");
+    }
+    const xp = await xpOf(page);
+    await page.reload();
+    await expect(main(page).getByTestId("reward-xp")).toBeVisible();
+    expect(await xpOf(page)).toBe(xp);
+  },
+);
+
+test(
+  "Home links its progress to Player status and shows Safe to Spend as an estimate",
+  { tag: "@phone" },
+  async ({ page }) => {
+    await page.goto("/home");
+    await expect(main(page).getByTestId("player-chip")).toHaveAttribute("href", "/rewards/status");
+    const card = main(page).getByTestId("safe-to-spend-card");
+    await expect(card).toContainText("Safe to Spend · estimate");
+    await expect(card).toHaveAttribute("href", "/safe-to-spend");
+    await main(page).getByTestId("player-chip").click();
+    await expect(page).toHaveURL(/\/rewards\/status$/);
     await expect(
-      main(page).locator('[data-testid="mission"][data-code="weekly_review"]'),
-    ).toHaveAttribute("data-state", "done");
-  }
-  const xp = await xpOf(page);
-  await page.reload();
-  await expect(main(page).getByTestId("reward-xp")).toBeVisible();
-  expect(await xpOf(page)).toBe(xp);
-});
+      main(page).getByRole("heading", { name: "Player status", exact: true }),
+    ).toBeVisible();
+  },
+);
 
-test("Home links its progress to Player status and shows Safe to Spend as an estimate", async ({
-  page,
-}) => {
-  await page.goto("/home");
-  await expect(main(page).getByTestId("player-chip")).toHaveAttribute("href", "/rewards/status");
-  const card = main(page).getByTestId("safe-to-spend-card");
-  await expect(card).toContainText("Safe to Spend · estimate");
-  await expect(card).toHaveAttribute("href", "/safe-to-spend");
-  await main(page).getByTestId("player-chip").click();
-  await expect(page).toHaveURL(/\/rewards\/status$/);
-  await expect(
-    main(page).getByRole("heading", { name: "Player status", exact: true }),
-  ).toBeVisible();
-});
-
-test("a reminder appears once, only when on, and can be dismissed", async ({ page }) => {
-  const client = await signedInClient();
+test("a reminder appears once, only when on, and can be dismissed", async ({ page, account }) => {
+  const client = await signedInClient(account);
   const { data: before } = await client.from("notification_preferences").select("*").single();
   const clear = () => client.from("notifications").delete().like("dedupe_key", "review:%");
   try {
@@ -261,7 +279,8 @@ test.describe("deleting an account", () => {
     const email = `pp-delete-${Date.now()}-${Math.round(Math.random() * 1e6)}@example.test`;
     const password = `Throwaway-${Date.now()}!`;
     // This spec must never be able to reach the real test accounts.
-    for (const kept of [E2E_EMAIL, process.env.E2E_USER_B_EMAIL]) expect(email).not.toBe(kept);
+    const kept = [E2E_EMAIL, process.env.E2E_USER_B_EMAIL, ...LEDGER_ACCOUNTS.map((a) => a.email)];
+    expect(kept).not.toContain(email);
     expect(email).toMatch(/^pp-delete-\d+-\d+@example\.test$/);
 
     const { data, error } = await admin.auth.admin.createUser({

@@ -1,11 +1,11 @@
 import { expect, test } from "@playwright/test";
 
-import { APP_ROUTES, PUBLIC_ROUTES } from "./routes";
+import { APP_ROUTES } from "./routes";
 
 // Signed-out behaviour. None of these submit valid credentials, so they never create accounts
 // or contact the Supabase project beyond loading pages.
 
-test("root sends signed-out visitors to welcome", async ({ page }) => {
+test("root sends signed-out visitors to welcome", { tag: "@smoke" }, async ({ page }) => {
   await page.goto("/");
   await expect(page).toHaveURL(/\/welcome$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("₹10");
@@ -21,36 +21,22 @@ for (const route of APP_ROUTES) {
   });
 }
 
-for (const route of PUBLIC_ROUTES) {
-  test(`${route} renders with a heading, no horizontal overflow and no console errors`, async ({
-    page,
-  }) => {
-    const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    page.on("console", (message) => {
-      if (message.type() === "error") errors.push(message.text());
-    });
-    const response = await page.goto(route);
-    expect(response?.status()).toBe(200);
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expect(page.locator("body")).not.toContainText(/coming soon/i);
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    );
-    expect(overflow).toBeLessThanOrEqual(0);
-    expect(errors).toEqual([]);
-  });
-}
+// Each public route's own checks (status, heading, overflow, console errors) run in a11y.spec.ts,
+// in the same page load as axe.
 
-test("sign-in validates input on the server and keeps the email", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill("not-an-email");
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByText("Enter a valid email address.")).toBeVisible();
-  await expect(page.getByText("Enter your password.")).toBeVisible();
-  await expect(page.getByLabel("Email")).toHaveValue("not-an-email");
-  await expect(page.getByLabel("Email")).toHaveAttribute("aria-invalid", "true");
-});
+test(
+  "sign-in validates input on the server and keeps the email",
+  { tag: "@smoke" },
+  async ({ page }) => {
+    await page.goto("/login");
+    await page.getByLabel("Email").fill("not-an-email");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByText("Enter a valid email address.")).toBeVisible();
+    await expect(page.getByText("Enter your password.")).toBeVisible();
+    await expect(page.getByLabel("Email")).toHaveValue("not-an-email");
+    await expect(page.getByLabel("Email")).toHaveAttribute("aria-invalid", "true");
+  },
+);
 
 test("registration checks password length and confirmation", async ({ page }) => {
   await page.goto("/register");

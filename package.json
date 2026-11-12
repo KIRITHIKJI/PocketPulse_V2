@@ -17,10 +17,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:smoke": "playwright test --grep @smoke",
     "check": "npm run lint && npm run typecheck && npm run test && npm run build",
     "test:db": "vitest run --config vitest.db.config.mts",
     "test:live": "vitest run --config vitest.live.config.mts",
-    "clean:e2e": "node scripts/clean-e2e-data.mjs"
+    "clean:e2e": "node scripts/clean-e2e-data.mjs",
+    "e2e:accounts": "node scripts/e2e-accounts.mjs"
   },
   "dependencies": {
     "@pdf-lib/fontkit": "1.1.1",

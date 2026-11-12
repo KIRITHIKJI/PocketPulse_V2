@@ -1,12 +1,12 @@
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, expect } from "@playwright/test";
 
-import { AUTH_FILE, E2E_EMAIL, E2E_PASSWORD, SIGNED_IN_SKIP_REASON } from "./routes";
+import { LEDGER_PASSWORD, LEDGER_SKIP_REASON, ledgerTest } from "./ledger";
 
 // Animation stops under reduced motion, whether that comes from the OS or the in-app setting. Each
 // case is measured against a control that really does animate, so a test that couldn't see any
-// animation at all fails instead of passing. Runs in the serial ledger projects.
-test.skip(!E2E_EMAIL || !E2E_PASSWORD, SIGNED_IN_SKIP_REASON);
-test.use({ storageState: AUTH_FILE });
+// animation at all fails instead of passing. Records on its own account.
+const test = ledgerTest("motion");
+test.skip(!LEDGER_PASSWORD, LEDGER_SKIP_REASON);
 test.describe.configure({ mode: "serial" });
 
 const WORD = "zzmotion";
@@ -93,9 +93,9 @@ async function deleteEntries(page: Page) {
   }
 }
 
-test.beforeAll(async ({ browser }) => {
+test.beforeAll(async ({ browser, account }) => {
   test.setTimeout(120_000);
-  const page = await browser.newPage({ storageState: AUTH_FILE });
+  const page = await browser.newPage({ storageState: account.stateFile });
   await deleteEntries(page);
   await logEntry(page, `${WORD} 40`);
   await logEntry(page, `${WORD} 25 yesterday`);
@@ -128,9 +128,9 @@ test.beforeAll(async ({ browser }) => {
   await page.close();
 });
 
-test.afterAll(async ({ browser }) => {
+test.afterAll(async ({ browser, account }) => {
   test.setTimeout(120_000);
-  const page = await browser.newPage({ storageState: AUTH_FILE });
+  const page = await browser.newPage({ storageState: account.stateFile });
   await deleteEntries(page);
   await openGoal(page);
   await main(page).getByRole("button", { name: "Release money" }).click();

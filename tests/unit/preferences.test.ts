@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+// The motion boot script runs against `document` and `localStorage`.
 import { isSupabaseConfigured, readPublicSupabaseEnv } from "@/lib/env";
 import {
   MOTION_BOOT_SCRIPT,

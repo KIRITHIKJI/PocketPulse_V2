@@ -1,12 +1,13 @@
-import { type BrowserContext, type Page, expect, test } from "@playwright/test";
+import { type BrowserContext, type Page, expect } from "@playwright/test";
 
-import { AUTH_FILE, E2E_EMAIL, E2E_PASSWORD, SIGNED_IN_SKIP_REASON } from "./routes";
+import { LEDGER_PASSWORD, LEDGER_SKIP_REASON, ledgerTest } from "./ledger";
 
 // Journey G and everything around it, on the real project with the real service worker. These
-// assert exact balance changes, so they run in the serial ledger projects. Every entry is deleted
-// again (soft delete, like a user delete).
-test.skip(!E2E_EMAIL || !E2E_PASSWORD, SIGNED_IN_SKIP_REASON);
-test.use({ storageState: AUTH_FILE, serviceWorkers: "allow" });
+// assert exact balance changes, so they record on this spec's own account per viewport. Every
+// entry is deleted again (soft delete, like a user delete).
+const test = ledgerTest("offline");
+test.skip(!LEDGER_PASSWORD, LEDGER_SKIP_REASON);
+test.use({ serviceWorkers: "allow" });
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
 const main = (page: Page) => page.locator("#main");
@@ -39,9 +40,9 @@ async function balanceOn(page: Page): Promise<number> {
 }
 
 /** A second, plain session of the same account: "the other device". */
-async function otherDevice(context: BrowserContext) {
+async function otherDevice(context: BrowserContext, stateFile: string) {
   const browser = context.browser()!;
-  const other = await browser.newContext({ storageState: AUTH_FILE, serviceWorkers: "block" });
+  const other = await browser.newContext({ storageState: stateFile, serviceWorkers: "block" });
   const page = await other.newPage();
   return { page, other };
 }
@@ -120,11 +121,16 @@ async function removeEntry(page: Page, id: string) {
   expect(result.ok).toBe(true);
 }
 
-test.afterEach(async ({ browser }) => {
-  const page = await browser.newPage({ storageState: AUTH_FILE });
+test.afterEach(async ({ browser, account }) => {
+  const page = await browser.newPage({ storageState: account.stateFile });
   for (const amount of usedAmounts) {
     await page.goto(`/transactions?type=expense&min=${amount}&max=${amount}`);
-    await expect(main(page).getByTestId("history-summary")).toBeVisible();
+    // An account with no live entries at all shows its first-run state instead of a summary.
+    await expect(
+      main(page)
+        .getByTestId("history-summary")
+        .or(main(page).getByRole("heading", { name: "No transactions yet" })),
+    ).toBeVisible();
     const hrefs = await main(page)
       .getByTestId("history-table")
       .getByRole("link")
@@ -144,69 +150,70 @@ async function rowsAt(page: Page, amount: string) {
   return Number(/^\d+/.exec(summary)![0]);
 }
 
-test("Journey G: add offline, survive a reload, sync once, correct on another device", async ({
-  page,
-  context,
-}) => {
-  await readyForOffline(page);
-  const { page: laptop, other } = await otherDevice(context);
-  await laptop.goto("/home");
-  const before = await balanceOn(laptop);
-  const amount = uniqueAmount();
+test(
+  "Journey G: add offline, survive a reload, sync once, correct on another device",
+  { tag: ["@phone", "@smoke"] },
+  async ({ page, context, account }) => {
+    await readyForOffline(page);
+    const { page: laptop, other } = await otherDevice(context, account.stateFile);
+    await laptop.goto("/home");
+    const before = await balanceOn(laptop);
+    const amount = uniqueAmount();
 
-  await context.setOffline(true);
-  await expect(banner(page)).toContainText("You’re offline");
+    await context.setOffline(true);
+    await expect(banner(page)).toContainText("You’re offline");
 
-  // A cold start with no network: the saved screen opens, and says how old it is.
-  await page.reload();
-  await expect(banner(page)).toContainText("Figures here are from");
-  await addTile(page, amount);
-  await expect(toast(page)).toContainText("Saved on this device");
+    // A cold start with no network: the saved screen opens, and says how old it is.
+    await page.reload();
+    await expect(banner(page)).toContainText("Figures here are from");
+    await addTile(page, amount);
+    await expect(toast(page)).toContainText("Saved on this device");
 
-  const waiting = main(page).getByTestId("waiting-entries");
-  await expect(waiting).toContainText("Tea");
-  await expect(waiting).toContainText(rupees(amount.paise));
-  await expect(waiting.getByTestId("sync-status").first()).toHaveAttribute(
-    "data-status",
-    "pending",
-  );
-  await expect(waiting).toContainText("isn’t in the figures");
-  // The balance on screen hasn't been faked: it's still the last figure the server gave.
-  expect(await balanceOn(page)).toBe(before);
+    const waiting = main(page).getByTestId("waiting-entries");
+    await expect(waiting).toContainText("Tea");
+    await expect(waiting).toContainText(rupees(amount.paise));
+    await expect(waiting.getByTestId("sync-status").first()).toHaveAttribute(
+      "data-status",
+      "pending",
+    );
+    await expect(waiting).toContainText("isn’t in the figures");
+    // The balance on screen hasn't been faked: it's still the last figure the server gave.
+    expect(await balanceOn(page)).toBe(before);
 
-  // Closing the app mustn't lose it.
-  await page.reload();
-  await expect(main(page).getByTestId("waiting-entries")).toContainText(rupees(amount.paise));
-  const op = await queuedOp(page, amount.paise);
-  expect(op?.command.kind).toBe("create");
+    // Closing the app mustn't lose it.
+    await page.reload();
+    await expect(main(page).getByTestId("waiting-entries")).toContainText(rupees(amount.paise));
+    const op = await queuedOp(page, amount.paise);
+    expect(op?.command.kind).toBe("create");
 
-  // Nothing has reached the other device.
-  await laptop.reload();
-  expect(await balanceOn(laptop)).toBe(before);
+    // Nothing has reached the other device.
+    await laptop.reload();
+    expect(await balanceOn(laptop)).toBe(before);
 
-  await context.setOffline(false);
-  await expect(toast(page).or(banner(page))).toBeVisible();
-  await expect(main(page).getByTestId("waiting-entries")).toBeHidden({ timeout: 30_000 });
-  await expect(main(page).getByTestId("home-balance")).toHaveAttribute(
-    "data-paise",
-    String(before - amount.paise),
-  );
+    await context.setOffline(false);
+    await expect(toast(page).or(banner(page))).toBeVisible();
+    await expect(main(page).getByTestId("waiting-entries")).toBeHidden({ timeout: 30_000 });
+    await expect(main(page).getByTestId("home-balance")).toHaveAttribute(
+      "data-paise",
+      String(before - amount.paise),
+    );
 
-  await laptop.reload();
-  expect(await balanceOn(laptop)).toBe(before - amount.paise);
-  expect(await rowsAt(laptop, amount.text)).toBe(1);
+    await laptop.reload();
+    expect(await balanceOn(laptop)).toBe(before - amount.paise);
+    expect(await rowsAt(laptop, amount.text)).toBe(1);
 
-  // A replay of the very same operation changes nothing.
-  const replay = await syncCommand(page, op!.command);
-  expect(replay).toMatchObject({ ok: true, status: "duplicate" });
-  await laptop.goto("/home");
-  expect(await balanceOn(laptop)).toBe(before - amount.paise);
+    // A replay of the very same operation changes nothing.
+    const replay = await syncCommand(page, op!.command);
+    expect(replay).toMatchObject({ ok: true, status: "duplicate" });
+    await laptop.goto("/home");
+    expect(await balanceOn(laptop)).toBe(before - amount.paise);
 
-  await removeEntry(page, op!.command.draft!.id);
-  await laptop.reload();
-  expect(await balanceOn(laptop)).toBe(before);
-  await other.close();
-});
+    await removeEntry(page, op!.command.draft!.id);
+    await laptop.reload();
+    expect(await balanceOn(laptop)).toBe(before);
+    await other.close();
+  },
+);
 
 test("the answer gets lost after saving: a retry finds it, and there's one entry", async ({
   page,
@@ -327,11 +334,12 @@ test("an offline edit that meets a newer one waits for a decision, then lands", 
   page,
   context,
   isMobile,
+  account,
 }) => {
   test.skip(isMobile, "The conflict screen runs once; it's the same screen on a phone.");
   await readyForOffline(page);
   const before = await balanceOn(page);
-  const { page: laptop, other } = await otherDevice(context);
+  const { page: laptop, other } = await otherDevice(context, account.stateFile);
   const amount = uniqueAmount();
   await addTile(page, amount);
   await expect(toast(page)).toContainText(`Saved ${rupees(amount.paise)}`);
@@ -415,59 +423,61 @@ test("reminders say plainly that they only show while the app is open", async ({
   await expect(main(page).getByText(/only appear while PocketPulse is open/)).toBeVisible();
 });
 
-test("signing out clears saved screens, and a queue waits for its own account", async ({
-  browser,
-}) => {
-  const context = await browser.newContext({
-    storageState: { cookies: [], origins: [] },
-    serviceWorkers: "allow",
-  });
-  const page = await context.newPage();
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(E2E_EMAIL!);
-  await page.getByLabel("Password").fill(E2E_PASSWORD!);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/home$/);
-  await readyForOffline(page);
+test(
+  "signing out clears saved screens, and a queue waits for its own account",
+  { tag: "@phone" },
+  async ({ browser, account }) => {
+    const context = await browser.newContext({
+      storageState: { cookies: [], origins: [] },
+      serviceWorkers: "allow",
+    });
+    const page = await context.newPage();
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(account.email);
+    await page.getByLabel("Password").fill(account.password);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/home$/);
+    await readyForOffline(page);
 
-  const amount = uniqueAmount();
-  await context.setOffline(true);
-  await addTile(page, amount);
-  // Block uploads before reconnecting, or the entry can sync before sign-out is tapped.
-  await page.route("**/api/sync", (route) => route.abort());
-  await context.setOffline(false);
-  await expect(page.getByTestId("account-menu")).toBeVisible();
+    const amount = uniqueAmount();
+    await context.setOffline(true);
+    await addTile(page, amount);
+    // Block uploads before reconnecting, or the entry can sync before sign-out is tapped.
+    await page.route("**/api/sync", (route) => route.abort());
+    await context.setOffline(false);
+    await expect(page.getByTestId("account-menu")).toBeVisible();
 
-  await page.getByTestId("account-menu").click();
-  await page.getByRole("menuitem", { name: "Sign out" }).click();
-  await expect(page.getByRole("dialog")).toContainText("hasn’t synced");
-  await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page).toHaveURL(/\/login/);
+    await page.getByTestId("account-menu").click();
+    await page.getByRole("menuitem", { name: "Sign out" }).click();
+    await expect(page.getByRole("dialog")).toContainText("hasn’t synced");
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/\/login/);
 
-  await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        const cache = await caches.open("pp-pages-v1");
-        return (await cache.keys()).length;
-      }),
-    )
-    .toBe(0);
-  const kept = await queuedOp(page, amount.paise);
-  expect(kept).not.toBeNull();
-  await page.unroute("**/api/sync");
-  await page.close();
+    await expect
+      .poll(() =>
+        page.evaluate(async () => {
+          const cache = await caches.open("pp-pages-v1");
+          return (await cache.keys()).length;
+        }),
+      )
+      .toBe(0);
+    const kept = await queuedOp(page, amount.paise);
+    expect(kept).not.toBeNull();
+    await page.unroute("**/api/sync");
+    await page.close();
 
-  const again = await context.newPage();
-  await again.goto("/login");
-  await again.getByLabel("Email").fill(E2E_EMAIL!);
-  await again.getByLabel("Password").fill(E2E_PASSWORD!);
-  await again.getByRole("button", { name: "Sign in" }).click();
-  await expect(again).toHaveURL(/\/home$/);
-  // It went up on its own, with no tap, once its own account was back.
-  await expect.poll(() => rowsAt(again, amount.text), { timeout: 60_000 }).toBe(1);
-  await removeEntry(again, kept!.command.draft!.id);
-  await context.close();
-});
+    const again = await context.newPage();
+    await again.goto("/login");
+    await again.getByLabel("Email").fill(account.email);
+    await again.getByLabel("Password").fill(account.password);
+    await again.getByRole("button", { name: "Sign in" }).click();
+    await expect(again).toHaveURL(/\/home$/);
+    // It went up on its own, with no tap, once its own account was back.
+    await expect.poll(() => rowsAt(again, amount.text), { timeout: 60_000 }).toBe(1);
+    await removeEntry(again, kept!.command.draft!.id);
+    await context.close();
+  },
+);
 
 test("the app is installable, and the sync route answers only for its own session", async ({
   page,

@@ -9,7 +9,8 @@ first; everything after it is V1 history.
 
 Supabase project for V2: `qdoyqcvzhxfsmwrcbsjs` (`pocketpulse-v2`, region **ap-south-1 / Mumbai**,
 checked with `supabase projects list` on 2026-11-12; what `.env.local` points at). All 13 V1
-migrations are pushed there and the e2e accounts exist there (your confirmation). V1
+migrations are pushed there (your confirmation). The e2e accounts in `.env.e2e.local` did **not**
+exist there; Phase 2A created V2 test accounts (see below). V1
 (`qzmqvytrekenzciasvph`) is live and must never be connected to.
 
 ### Phase 1 — inspection and specification (2026-11-12) ✅
@@ -62,17 +63,80 @@ First-load JS (raw / gzip KB, computed from the Turbopack manifests; full table 
 §9): public pages 596–604 / 187–189; signed-in screens 787–848 / 246–267. Largest: `/home` and
 `/categories` 848 / 267, `/add` 844 / 266. Smallest signed-in: `/settings/data` 787 / 246.
 
+### Phase 2A — faster tests (2026-11-12) ✅
+
+Test infrastructure only: no file under `src/`, `supabase/` or `public/` changed, no migration.
+
+- **Own account per money spec.** `npm run e2e:accounts` (`scripts/e2e-accounts.mjs`) creates 14
+  accounts on V2, one per money spec and viewport (`e2e/ledger-accounts.json`). It refuses any
+  project but `qdoyqcvzhxfsmwrcbsjs` (checked: a fake URL exits 1 before anything is sent), reads the
+  secret key from `.env.local`, keeps the shared password in the gitignored `.env.e2e.local`
+  (`E2E_LEDGER_PASSWORD`), prints no key or password, and only touches `pp-e2e-…@example.test`
+  users. Each starts with a "Cash" wallet at ₹10,000 from 1 Jan 2026 and onboarding done.
+  `e2e/ledger.ts` (`ledgerTest("plan")`) signs each spec in as its own account.
+- **Found: the shared account and user B didn't exist in V2.** The addresses in `.env.e2e.local`
+  were V1's (sign-in answered `invalid_credentials`; the admin user list had no such users; V2 held
+  only your personal account and the new test accounts). The script created
+  `pp-e2e-shared@example.test` and `pp-e2e-user-b@example.test` and pointed `E2E_EMAIL` /
+  `E2E_USER_B_EMAIL` (and their passwords) at them; the four old lines stay in `.env.e2e.local` as
+  comments. It only does this when the configured accounts are missing from V2.
+- **Parallel money specs.** `ledger-desktop` runs the 9 money spec files in parallel (tests inside a
+  file keep their order); `ledger-mobile` no longer waits for it.
+- **One viewport for most money journeys.** At phone size only `@phone` tests run again (9 runs:
+  Journeys A, B, F, G, the one-tap tile, typed/voice links, mission and Home progress layout,
+  signing out offline). The other 55 phone runs repeated money logic that runs at desktop size.
+- **Each route loaded once per theme and viewport.** `a11y.spec.ts` now also asserts what the
+  per-route tests in `shell.spec.ts` and `auth.spec.ts` did (status 200, heading, no "coming soon",
+  no overflow, layout width = device width, no console errors), in the same load as axe. Dark runs
+  at the device size (1280 / Pixel 7), light at 1440 / 375, so all four widths are still checked.
+  Readiness is "no skeleton left" instead of `networkidle`.
+- **Sessions reused.** Setup reuses a saved session that still opens a signed-in page (1–2.5 s per
+  account instead of a sign-in).
+- **Fresh server.** Every run builds; `PW_REUSE_SERVER=1` reuses a running server, for reruns while
+  working only.
+- **Smoke set:** `npm run test:smoke` = 19 tests tagged `@smoke` plus the 15 sign-ins; some run at
+  both sizes, 45 runs in all.
+- **Unit tests:** `.ts` tests run in Node, `.tsx` in jsdom (vitest projects).
+  `tests/unit/preferences.test.ts` declares `// @vitest-environment jsdom` (it runs the motion boot
+  script against `document`).
+- **Counts:** 407 → 304 runs. desktop 139 → 108 and mobile 139 → 108 (31 per-route tests merged into
+  a11y), ledger-desktop 64 → 64, ledger-mobile 64 → 9, setup 1 → 15. No test deleted or weakened.
+  Two assertions moved, with the same meaning (table below).
+- **Workers: 4**, with `ledger-desktop` capped at 2 and `ledger-mobile` at 1.
+
+**Failures met on the way, and what was done**
+
+| Failure | Cause | Fix |
+| --- | --- | --- |
+| Setup: shared account "email and password don't match" | Account not in V2 (above) | Created on V2 by the script |
+| Offline `afterEach` waited for `history-summary` (desktop and phone) | A new account with no live entries shows "No transactions yet" instead; the old shared account always had entries | The cleanup waits for either |
+| Rewards: reviewed weekly mission not found on the hub (desktop and phone) | The hub shows the first four missions, open ones first; on a fresh account the finished one drops out. The old account had other missions done | The same `data-state="done"` check, on `/rewards/missions`, which lists every mission |
+| Journey C and the full-form journey ran out of 30 s (at 6 workers; the full form again at 4) | One `next start` serves every browser; with 4–6 long money journeys at once each queues behind the others (alone: 16.6 s and 20.9 s) | No timeout raised. At most 3 money specs at once (2 desktop + 1 phone), 4 workers in all. Both pass in the final run |
+
+**Before → after (this machine)**
+
+| Check | Before (Phase 1 baseline) | After (final code, once each) |
+| --- | --- | --- |
+| `npm test` | 78 s wall, 36 files / 918 ✅ | 19 s wall (vitest 17.1 s), 36 files / 918 ✅. Earlier runs this phase: 23, 33, 41 s |
+| Smoke set | didn't exist | 157 s incl. build: 45 passed, 0 failed |
+| Full e2e | 10.1–14.8 min recorded (Design 4 runs; 39.4 min worst), 407 runs | 465 s = 7.75 min incl. build: 300 passed, 4 skipped (the designed desktop-only onboarding tests), 0 failed, 0 didn't run |
+| Lint / typecheck / build | 110 s / 65 s / 53 s ✅ | 29 s / 6 s / 25 s ✅ (no lint or build config changed; the difference is warm caches from the runs before) |
+
 ### Checklist for Phases 2–6
 
 **Phase 2A — faster tests (test infrastructure only)**
-- [ ] One V2 test account per money spec (script refuses any other project, key from `.env.local`,
+- [x] One V2 test account per money spec (script refuses any other project, key from `.env.local`,
       never printed); per-account storage states; money specs in parallel
-- [ ] Money journeys at one viewport except A, G and navigation; merge per-route shell/auth checks
-      into the a11y visit; no `waitForTimeout`/`networkidle`; fresh server per run
-- [ ] `@smoke` tag on the ~20 tests in `doc/V2_SPEC.md` §10; `npm run test:smoke`
-- [ ] Full e2e under 15 min (target 6–9), measured; smoke measured
-- [ ] Pure unit tests in the `node` environment
-- [ ] `scripts/route-js.mjs` for first-load JS
+- [x] Money journeys at one viewport except A, G and navigation; merge per-route shell/auth checks
+      into the a11y visit (readiness = no skeleton instead of `networkidle`); fresh server per run.
+      **Not changed:** the 3 `waitForTimeout` calls (motion ×2, rewards ×1) are observation windows
+      that sample animations and pop-ups over time, not readiness waits; `networkidle` stays in
+      appearance and rewards. Left as they were
+- [x] `@smoke` tag on the ~20 tests in `doc/V2_SPEC.md` §10; `npm run test:smoke`
+- [x] Full e2e under 15 min (target 6–9), measured; smoke measured
+- [x] Pure unit tests in the `node` environment
+- [ ] `scripts/route-js.mjs` for first-load JS (not done: the measuring script is still only in the
+      Phase 1 scratchpad; move it into the repo in 2B, when sizes are next reported)
 
 **Phase 2B — forecast removal, loans, credit cards, reconciliation**
 - [ ] Remove expected end balance, run-out warning, survival run-out branch, goal finish date,
@@ -115,7 +179,7 @@ First-load JS (raw / gzip KB, computed from the Turbopack manifests; full table 
 
 # V1 history
 
-_Last updated: 2026-11-10 — Pre-deploy check: ledger e2e passes on desktop and mobile after two test-race fixes; Vercel region `bom1` confirmed; env var names listed (see "Pre-deploy check"). Before that, Design 4 final check: sidebar fits 768 px, reward, offline and speed fixes; the complete e2e suite passed in one run (398 passed, 9 skipped, 0 failed; see "Design 4 final check"). Before that, 2026-11-07 — Design 4 of 4, the last design phase (every remaining screen, sidebar groups, full QA; see "Design 4"). No migration. Before that, Design 3 of 4 (Player status, Missions, Achievements, Rewards hub, the feedback ladder, permanent achievements, Safe to Spend on Home; see "Design 3"). Migration `20261106000200_missions` is applied on the hosted project (you ran `db push` on 2026-11-07). Before that, Design 2 of 4 (Home, Quick Add, mobile bar, rewards that follow Undo; see "Design 2"). Before that, Design 1 (audit, `doc/DESIGN_PLAN.md`, foundation). Before that, Code tidy (no behaviour change). Before that, Speed fixes 2. Migrations 0100–1000, 20261105000100 (ledger keyset index) and 20261106000100 (`wallet_balances`) are applied on the hosted project (you ran `db push`; `migration list` confirmed). The app is not deployed yet, so nothing has been tried on a real phone._
+_Last updated: 2026-11-12 — V2 Phase 2A (faster tests). Earlier: 2026-11-10 — Pre-deploy check: ledger e2e passes on desktop and mobile after two test-race fixes; Vercel region `bom1` confirmed; env var names listed (see "Pre-deploy check"). Before that, Design 4 final check: sidebar fits 768 px, reward, offline and speed fixes; the complete e2e suite passed in one run (398 passed, 9 skipped, 0 failed; see "Design 4 final check"). Before that, 2026-11-07 — Design 4 of 4, the last design phase (every remaining screen, sidebar groups, full QA; see "Design 4"). No migration. Before that, Design 3 of 4 (Player status, Missions, Achievements, Rewards hub, the feedback ladder, permanent achievements, Safe to Spend on Home; see "Design 3"). Migration `20261106000200_missions` is applied on the hosted project (you ran `db push` on 2026-11-07). Before that, Design 2 of 4 (Home, Quick Add, mobile bar, rewards that follow Undo; see "Design 2"). Before that, Design 1 (audit, `doc/DESIGN_PLAN.md`, foundation). Before that, Code tidy (no behaviour change). Before that, Speed fixes 2. Migrations 0100–1000, 20261105000100 (ledger keyset index) and 20261106000100 (`wallet_balances`) are applied on the hosted project (you ran `db push`; `migration list` confirmed). The app is not deployed yet, so nothing has been tried on a real phone._
 
 ## Build stages
 

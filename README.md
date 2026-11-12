@@ -123,42 +123,58 @@ accounts. Without them it is skipped.
 ### Cleaning up the test accounts
 
 `npm run clean:e2e` lists the archived test wallets, goals and categories that test runs have left
-in those two accounts and changes nothing. `npm run clean:e2e -- --apply` removes them. It signs in
+in the e2e accounts and changes nothing. `npm run clean:e2e -- --apply` removes them. It signs in
 as each account, so it can't touch anyone else's data. It never removes an entry: anything with an
 entry linked to it, deleted entries included, stays.
 
 ### Signed-in browser tests
 
 `npm run test:e2e` always runs the signed-out suite (redirects, auth forms, validation). The
-signed-in shell suite needs a real test account in a project with the migrations applied. Put
-`E2E_EMAIL=…` and `E2E_PASSWORD=…` (plain values, no quotes or brackets) in `.env.e2e.local`;
-the Playwright config loads it. The suite signs in once and reuses the session
-(`e2e/.auth/`, gitignored) to stay under Supabase's sign-in rate limits, and runs at most 4
-workers for the same reason. Tests that change the test profile (theme, motion, onboarding,
-wallets) run on the desktop project only and restore defaults; runs leave archived "E2E …"
-wallets/categories in the test account. Without the credentials it is skipped.
+signed-in suites need test accounts in the V2 project. `npm run e2e:accounts`
+(`scripts/e2e-accounts.mjs`) makes them: it refuses any Supabase project but V2
+(`qdoyqcvzhxfsmwrcbsjs`), reads the secret key from `.env.local`, keeps the accounts' password only
+in the gitignored `.env.e2e.local` (`E2E_LEDGER_PASSWORD`, never printed), and only creates or
+changes `pp-e2e-…@example.test` users. It makes:
 
-`e2e/transactions.spec.ts`, `e2e/transactions-batch.spec.ts`, `e2e/insights.spec.ts`,
-`e2e/plan.spec.ts`, `e2e/motion.spec.ts`, `e2e/report.spec.ts` and `e2e/rewards.spec.ts` record real money entries and assert exact balance
-changes, so they run in their own projects (`ledger-desktop`, then
-`ledger-mobile`), one worker each, never in parallel with each other. Every entry they create is
-undone or deleted again (soft delete, like a user delete), so the account's totals end where they
-started; if a run is interrupted mid-test, an entry can be left behind. `ledger-mobile` depends on
-`ledger-desktop` and `-g` doesn't filter dependency projects, so filtering these specs still
-records money unless you add `--no-deps`. Wallets created by the
-Phase 4 test start tracking tomorrow, so they never shift today's totals. A goal with history
-can't be deleted, so the plan and motion specs reuse one archived goal each between runs, and the
-plan spec leaves cancelled bills and archived recurring items behind. `e2e/rewards.spec.ts` tests account
-deletion only on a throwaway `pp-delete-…@example.test` user it creates with the admin API, so it
-needs `SUPABASE_SECRET_KEY`; it never touches the two accounts in `.env.e2e.local`. Voice tests use a
-stand-in for the browser's speech recognition, so they don't exercise a real microphone or speech
-service. The cross-user 404 check also needs a second account:
-add `E2E_USER_B_EMAIL` / `E2E_USER_B_PASSWORD` (the same variables `test:live` uses); without
-them that one test is skipped.
+- one account per money spec and viewport, listed in `e2e/ledger-accounts.json`;
+- the shared account (`E2E_EMAIL`) and a second user (`E2E_USER_B_EMAIL`), only if the ones in
+  `.env.e2e.local` don't exist in V2; it then points `.env.e2e.local` at
+  `pp-e2e-shared@example.test` and `pp-e2e-user-b@example.test` and keeps the old lines as comments.
+
+Each account starts like a real user after a skipped onboarding, with one "Cash" wallet that opens
+at ₹10,000 on 1 Jan 2026. The setup project (`e2e/auth.setup.ts`) signs each account in once and
+saves its session in `e2e/.auth/` (gitignored); a saved session that still works is reused, so a run
+makes few sign-in requests. Tests that change the shared test profile (onboarding, wallets,
+categories) run on the desktop project only and restore defaults; runs leave archived "E2E …"
+wallets/categories behind. Without the credentials the signed-in tests are skipped.
+
+The money specs (`transactions`, `transactions-batch`, `insights`, `plan`, `motion`, `report`,
+`rewards`, `appearance`, `offline`) record real entries and assert exact balance changes. Each one
+records on **its own account** (`e2e/ledger.ts`: `ledgerTest("plan")` signs the spec in as
+`pp-e2e-plan-desktop@example.test`), so the spec files run in parallel with each other while the
+tests inside a file keep their order. They run in full at desktop size (`ledger-desktop`); at phone
+size (`ledger-mobile`) only the tests tagged `@phone` run again, the ones whose screens or controls
+differ on a phone (Journeys A, B, F and G, the one-tap tile, typed/voice entry links, mission and
+Home progress layout, signing out offline). Every entry they create is undone or deleted again (soft
+delete, like a user delete); if a run is interrupted mid-test, an entry can be left behind, but only
+in that spec's account. A goal with history can't be deleted, so the plan and motion specs reuse one
+archived goal each between runs. `e2e/rewards.spec.ts` tests account deletion only on a throwaway
+`pp-delete-…@example.test` user it creates with the admin API, so it needs `SUPABASE_SECRET_KEY`.
+Voice tests use a stand-in for the browser's speech recognition, so they don't exercise a real
+microphone or speech service. The cross-user checks use the second account.
 
 `e2e/offline.spec.ts` is the only spec that runs with the real service worker; every other spec
-blocks it, so a saved page can never decide a result. `e2e/a11y.spec.ts` checks every screen in both
-themes at 375 and 1440 px with axe. Set `SHOTS_DIR` to a folder to also get a screenshot of each.
+blocks it, so a saved page can never decide a result. `e2e/a11y.spec.ts` loads every screen once
+per theme and viewport (dark at the device's own size, light at 375 and 1440 px) and checks the
+status, heading, overflow, console errors and axe in that one visit. Set `SHOTS_DIR` to a folder to
+also get a screenshot of each.
+
+`npm run test:smoke` runs the smoke set: the tests tagged `@smoke` (the key journey of each area,
+the cross-user checks and two accessibility checks), a few minutes instead of the full run.
+
+Every run builds the app fresh and serves it on port 3100. While working, `PW_REUSE_SERVER=1`
+reuses a server you already started there (`npx next start -p 3100`); never use it for a run whose
+result you report.
 
 ## Scripts
 
@@ -168,11 +184,13 @@ themes at 375 and 1440 px with axe. Set `SHOTS_DIR` to a folder to also get a sc
 | `npm run build` / `npm start` | Production build / serve it |
 | `npm run lint` | ESLint (Next core-web-vitals + TypeScript rules, Prettier-compatible) |
 | `npm run typecheck` | Generates Next route types, then `tsc --noEmit` |
-| `npm test` | Vitest unit/integration tests (jsdom) |
+| `npm test` | Vitest unit/integration tests (Node; jsdom for component tests) |
 | `npm run test:db` | Schema/RLS/RPC tests on a real Postgres (needs `POCKETPULSE_TEST_DB_URL`) |
 | `npm run test:live` | Defaults + cross-user RLS against the configured Supabase project (needs two test accounts) |
-| `npm run clean:e2e` | Lists leftover test data in the two test accounts; add `-- --apply` to remove it |
+| `npm run clean:e2e` | Lists leftover test data in the e2e accounts; add `-- --apply` to remove it |
+| `npm run e2e:accounts` | Creates or repairs the browser-test accounts on the V2 project |
 | `npm run test:e2e` | Playwright on desktop Chrome + Pixel 7 viewports (builds and serves on port 3100) |
+| `npm run test:smoke` | The `@smoke` subset of the browser tests |
 | `npm run format` | Prettier (with Tailwind class sorting) |
 | `npm run check` | lint + typecheck + test + build |
 
