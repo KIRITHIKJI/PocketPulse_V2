@@ -53,7 +53,7 @@ test("unknown transaction ids get a real 404 with the in-app not-found state", a
 });
 
 test(
-  "navigation: sidebar on desktop, bottom tabs + You sheet on mobile",
+  "navigation: eight-link sidebar on desktop, bottom bar + More sheet on mobile, Add sheet, hub tabs",
   { tag: "@smoke" },
   async ({ page, isMobile }) => {
     await page.goto("/home");
@@ -70,25 +70,94 @@ test(
         "page",
       );
 
-      await tabs.getByRole("button", { name: "You" }).click();
-      await page.getByRole("dialog").getByRole("link", { name: "Money leaks" }).click();
-      await expect(page).toHaveURL(/\/insights\/leaks$/);
+      // Two taps from the bar: More, then a hub's screen.
+      await tabs.getByRole("button", { name: "More" }).click();
+      await page.getByRole("dialog").getByRole("link", { name: "Categories" }).click();
+      await expect(page).toHaveURL(/\/categories$/);
       await expect(page.getByRole("dialog")).toBeHidden();
+      await expect(
+        page.getByRole("navigation", { name: "Manage screens" }).getByRole("link", {
+          name: "Categories",
+        }),
+      ).toHaveAttribute("aria-current", "page");
 
-      await page.getByRole("link", { name: "Add expense" }).click();
+      await tabs.getByRole("button", { name: "Add expense" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("navigation", { name: "Ways to add" })
+        .getByRole("link", { name: /Quick add/ })
+        .click();
       await expect(page).toHaveURL(/\/add$/);
     } else {
       await expect(sidebar).toBeVisible();
       await expect(tabs).toBeHidden();
-      await sidebar.getByRole("link", { name: "Savings goals" }).click();
+      await expect(
+        sidebar.getByRole("navigation", { name: "Sections" }).getByRole("link"),
+      ).toHaveText([
+        "Home",
+        "Transactions",
+        "Insights",
+        "Plan",
+        "Player",
+        "Reports",
+        "Manage",
+        "Settings",
+      ]);
+
+      await sidebar.getByRole("link", { name: "Plan" }).click();
+      await expect(page).toHaveURL(/\/budgets$/);
+      const hub = page.getByRole("navigation", { name: "Plan screens" });
+      await hub.getByRole("link", { name: "Goals" }).click();
       await expect(page).toHaveURL(/\/goals$/);
-      await expect(sidebar.getByRole("link", { name: "Savings goals" })).toHaveAttribute(
+      await expect(hub.getByRole("link", { name: "Goals" })).toHaveAttribute(
         "aria-current",
         "page",
       );
+      // The hub's sidebar link stays current on every tab.
+      await expect(sidebar.getByRole("link", { name: "Plan" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+
+      await sidebar.getByRole("button", { name: "Add expense" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("navigation", { name: "Ways to add" })
+        .getByRole("link", { name: /Type it/ })
+        .click();
+      await expect(page).toHaveURL(/\/add\/text$/);
+      await expect(page.getByRole("dialog")).toBeHidden();
     }
   },
 );
+
+test.describe("sidebar on common laptop screens", () => {
+  for (const viewport of [
+    { width: 1366, height: 768 },
+    { width: 1440, height: 900 },
+  ]) {
+    test(`fits ${viewport.width}×${viewport.height} without scrolling`, async ({
+      page,
+      isMobile,
+    }) => {
+      test.skip(isMobile, "The sidebar is a laptop layout.");
+      await page.setViewportSize(viewport);
+      await page.goto("/home");
+      const sidebar = page.getByRole("complementary", { name: "Main navigation" });
+      await expect(sidebar.getByTestId("sidebar-player-chip")).toBeVisible();
+      const { scroll, client } = await sidebar.evaluate((el) => ({
+        scroll: el.scrollHeight,
+        client: el.clientHeight,
+      }));
+      expect(scroll).toBeLessThanOrEqual(client);
+      // Every link and the level line are inside the screen.
+      for (const item of await sidebar.getByRole("link").all()) {
+        const box = await item.boundingBox();
+        expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height);
+      }
+    });
+  }
+});
 
 test.describe("with OS reduced motion", () => {
   test.use({ reducedMotion: "reduce" });

@@ -9,7 +9,7 @@ import { InlineAction } from "@/components/forms/inline-action";
 import { StatePanel } from "@/components/states/state-panel";
 import { Surface } from "@/components/ui/surface";
 import { assignCategory } from "@/lib/actions/categories";
-import { IDLE } from "@/lib/forms";
+import { IDLE } from "@/lib/form-state";
 
 export type QueueItem = {
   id: string;

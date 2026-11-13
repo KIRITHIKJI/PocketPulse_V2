@@ -17,5 +17,5 @@ export function beforeOpeningText(
   openingDateLabel: string,
   saved = false,
 ): string {
-  return `${saved ? "This entry is" : "This date is"} before ${walletName}’s opening date (${openingDateLabel}), so it’s treated as already included in the opening balance and ${saved ? "doesn’t" : "won’t"} change ${walletName}’s balance. Move the opening date earlier on Wallets if you want it counted.`;
+  return `${saved ? "This entry is" : "This date is"} before ${walletName}’s opening date (${openingDateLabel}), so it’s treated as already included in the opening balance and ${saved ? "doesn’t" : "won’t"} change ${walletName}’s balance. Move the opening date earlier on Accounts if you want it counted.`;
 }

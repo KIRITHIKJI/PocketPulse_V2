@@ -1,10 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Safe to spend while it loads: the daily estimate, the breakdown, then the form. */
+/** Safe to Spend while it loads: the daily estimate, the breakdown, then the form. */
 export default function SafeToSpendLoading() {
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-6">
-      <span className="sr-only">Loading Safe to spend…</span>
+      <span className="sr-only">Loading Safe to Spend…</span>
       <div className="flex flex-col gap-2">
         <Skeleton className="h-7 w-40" />
         <Skeleton className="h-4 w-full max-w-md" />

@@ -65,7 +65,7 @@ async function records(s: Session) {
   return { ledger, accounts, commitments, templates };
 }
 
-/** Exactly what Safe to spend and Survival Mode calculate. */
+/** Exactly what Safe to Spend and Survival Mode calculate. */
 async function plan(s: Session) {
   const r = await records(s);
   return calculatePlan({ ...r, now: NOW, settings, nextIncomeDate: NEXT_INCOME });

@@ -4,15 +4,8 @@ import { Monitor, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { usePersistPreferences } from "@/components/providers/preference-sync";
+import { useHeaderMenu } from "@/components/layout/use-header-menu";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useHydrated } from "@/hooks/use-hydrated";
 import type { ThemePreference } from "@/lib/validation/settings";
 
@@ -35,28 +28,31 @@ export function ThemeSwitcher() {
     persist?.({ theme: value as ThemePreference });
   };
   const Icon = hydrated && resolvedTheme === "light" ? Sun : Moon;
+  // Without the menu's code at all (offline, never saved), the button switches dark and light.
+  const { menus, open, setOpen, openFirst } = useHeaderMenu(() =>
+    choose(resolvedTheme === "light" ? "dark" : "light"),
+  );
 
+  const trigger = (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Change theme"
+      aria-haspopup="menu"
+      data-testid="theme-switcher"
+      onClick={openFirst}
+    >
+      <Icon className="size-[1.15rem]" />
+    </Button>
+  );
+  if (!menus) return trigger;
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Change theme" data-testid="theme-switcher">
-          <Icon className="size-[1.15rem]" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Theme</DropdownMenuLabel>
-        <DropdownMenuRadioGroup
-          value={hydrated ? (theme ?? "dark") : "dark"}
-          onValueChange={choose}
-        >
-          {THEME_OPTIONS.map(({ value, label, icon: OptionIcon }) => (
-            <DropdownMenuRadioItem key={value} value={value}>
-              <OptionIcon />
-              {label}
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <menus.ThemeMenu
+      trigger={trigger}
+      open={open}
+      onOpenChange={setOpen}
+      value={hydrated ? (theme ?? "dark") : "dark"}
+      onChoose={choose}
+    />
   );
 }

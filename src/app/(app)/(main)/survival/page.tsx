@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
 import { IncomeDatePrompt } from "@/components/plan/income-date-prompt";
 import { FigureRow, PlanNote } from "@/components/plan/parts";
 import { PlanningForm } from "@/components/plan/planning-form";
@@ -89,8 +88,8 @@ export default async function SurvivalPage() {
       <PageHeader
         title="Survival mode"
         description="A calm look at making your money last until your next allowance."
+        tabs="plan"
       />
-      <SectionTabs section="plan" />
 
       {plan.status === "needs_date" ? (
         <Surface variant="hero">

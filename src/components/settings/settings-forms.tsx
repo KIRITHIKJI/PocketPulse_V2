@@ -12,7 +12,7 @@ import {
 } from "@/components/forms/form-parts";
 import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@/domain";
 import { saveIncome, saveProfileName, saveRegion, saveSpending } from "@/lib/actions/settings";
-import { type FormState, IDLE } from "@/lib/forms";
+import { type FormState, IDLE } from "@/lib/form-state";
 import { paiseToInput } from "@/lib/format";
 import { type IncomeFrequency } from "@/lib/validation/settings";
 

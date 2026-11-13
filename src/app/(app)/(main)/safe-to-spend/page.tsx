@@ -4,7 +4,6 @@ import { ArrowRight, ChevronDown } from "lucide-react";
 
 import { Notice } from "@/components/feedback/notice";
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
 import { IncomeDatePrompt } from "@/components/plan/income-date-prompt";
 import { FigureRow, PlanNote } from "@/components/plan/parts";
 import { PlanningForm, PlanningFormState } from "@/components/plan/planning-form";
@@ -15,7 +14,7 @@ import { formatLocalDate } from "@/lib/format";
 import { dueItems } from "@/lib/plan-view";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Safe to spend" };
+export const metadata: Metadata = { title: "Safe to Spend" };
 
 export default async function SafeToSpendPage() {
   const { profile, commitments, templates, ledger, today, money, result } = await loadPlan();
@@ -73,16 +72,16 @@ export default async function SafeToSpendPage() {
   return (
     <PlanningFormState>
       <PageHeader
-        title="Safe to spend"
+        title="Safe to Spend"
         description="What’s flexible after savings and bills, until your next income."
+        tabs="plan"
       />
-      <SectionTabs section="plan" />
 
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
         <Surface variant="hero" className="min-w-0">
           {ok ? (
             <>
-              <p className="type-caption text-text-secondary">Safe to spend · estimate</p>
+              <p className="type-caption text-text-secondary">Safe to Spend · estimate</p>
               <p className="type-body text-text-secondary">
                 About{" "}
                 <span

@@ -213,7 +213,8 @@ describe("the feedback ladder on screen", () => {
     // The peak moment comes last, alone on screen, and waits for the person.
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByTestId("toast")).toBeNull();
-    expect(screen.getByTestId("level-up")).toHaveTextContent("Level 2");
+    // Its code loads on first use (not with the shell), so wait for it to appear.
+    expect(await screen.findByTestId("level-up")).toHaveTextContent("Level 2");
     expect(popUps()).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(popUps()).toHaveLength(0);

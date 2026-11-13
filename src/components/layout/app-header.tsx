@@ -12,7 +12,7 @@ import { optionalSession } from "@/lib/data/session";
 export async function AppHeader() {
   const [user, unread] = await Promise.all([optionalSession(), getUnreadCount()]);
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-background/75 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b bg-background/75 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-xl sm:px-6 lg:border-transparent lg:px-8">
       <Link href="/home" className="rounded-lg lg:hidden" aria-label="PocketPulse home">
         <Logo />
       </Link>

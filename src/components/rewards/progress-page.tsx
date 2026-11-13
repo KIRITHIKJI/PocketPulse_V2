@@ -1,5 +1,4 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
 import { SaveEarnedRewards } from "@/components/rewards/save-earned-rewards";
 import { StatePanel } from "@/components/states/state-panel";
 import type { ProgressView } from "@/lib/rewards/view";
@@ -16,8 +15,7 @@ export function ProgressHeader({
 }) {
   return (
     <>
-      <PageHeader title={title} description={description} />
-      <SectionTabs section="progress" />
+      <PageHeader title={title} description={description} tabs="player" />
       {view?.plan.changed && <SaveEarnedRewards />}
     </>
   );

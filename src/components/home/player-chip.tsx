@@ -53,12 +53,10 @@ export async function SidebarPlayerChip() {
 
 export function SidebarPlayerChipSkeleton() {
   return (
-    <div
-      aria-hidden="true"
-      className="flex h-14 flex-col justify-center gap-1.5 rounded-xl border px-3"
-    >
-      <Skeleton className="h-3 w-28" />
-      <Skeleton className="h-2 w-full rounded-full" />
+    <div aria-hidden="true" className="flex h-10 items-center gap-2.5 px-2">
+      <Skeleton className="size-6 rounded-md" />
+      <Skeleton className="h-3 flex-1" />
+      <Skeleton className="h-1 w-12 rounded-full" />
     </div>
   );
 }

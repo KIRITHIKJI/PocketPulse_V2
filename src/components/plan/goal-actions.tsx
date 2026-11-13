@@ -19,7 +19,7 @@ import { Surface } from "@/components/ui/surface";
 import { type GoalStatus, moneyFormatter } from "@/domain";
 import { setGoalStatus } from "@/lib/actions/goals";
 import type { EntryKit } from "@/lib/data/entry-kit";
-import { IDLE, type FormState } from "@/lib/forms";
+import { IDLE, type FormState } from "@/lib/form-state";
 
 /** Theme tokens only, so the burst matches both themes. */
 const CONFETTI = [

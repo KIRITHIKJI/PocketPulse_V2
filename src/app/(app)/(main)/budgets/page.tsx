@@ -4,7 +4,6 @@ import { Target, Trash2 } from "lucide-react";
 import { Notice } from "@/components/feedback/notice";
 import { ConfirmAction } from "@/components/forms/inline-action";
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
 import { BudgetFormDialog, type BudgetSuggestion } from "@/components/plan/budget-form";
 import { BudgetRemaining, PlanNote } from "@/components/plan/parts";
 import { StatePanel } from "@/components/states/state-panel";
@@ -241,8 +240,8 @@ export default async function BudgetsPage() {
             <BudgetFormDialog categories={pickable} suggestions={suggestions} today={today} />
           ) : undefined
         }
+        tabs="plan"
       />
-      <SectionTabs section="plan" />
 
       {rows.length === 0 ? (
         <StatePanel

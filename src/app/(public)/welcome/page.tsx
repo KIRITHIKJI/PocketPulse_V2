@@ -21,7 +21,7 @@ const PILLARS = [
   {
     icon: PiggyBank,
     title: "Save on purpose",
-    body: "Earmark money for goals and see what’s safe to spend until your next allowance.",
+    body: "Earmark money for goals and see your Safe to Spend until your next allowance.",
   },
   {
     icon: ShieldCheck,

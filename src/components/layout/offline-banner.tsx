@@ -26,7 +26,7 @@ function Bar({
       className={
         tone === "warning"
           ? "flex items-start gap-2 border-b border-warning/30 bg-warning/10 px-4 py-2 text-sm sm:px-6 lg:px-8"
-          : "flex items-start gap-2 border-b border-primary/30 bg-primary-soft px-4 py-2 text-sm sm:px-6 lg:px-8"
+          : "flex items-start gap-2 border-b border-border bg-surface-inset px-4 py-2 text-sm sm:px-6 lg:px-8"
       }
     >
       <Icon className="mt-0.5 size-4 shrink-0" aria-hidden="true" />

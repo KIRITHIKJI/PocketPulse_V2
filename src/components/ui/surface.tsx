@@ -12,7 +12,7 @@ const surfaceVariants = cva("relative flex flex-col gap-stack text-card-foregrou
   variants: {
     variant: {
       card: "rounded-2xl border border-(--surface-card-border) bg-(--surface-card-bg) p-surface shadow-(--surface-card-shadow)",
-      hero: "overflow-hidden rounded-2xl border border-(--surface-card-border) bg-(--surface-hero-bg) p-surface shadow-(--surface-raised-shadow) before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-(image:--gradient-status-edge)",
+      hero: "overflow-hidden rounded-2xl border border-(--surface-card-border) bg-(--surface-hero-bg) p-surface shadow-(--surface-raised-shadow) before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-(image:--surface-hero-edge)",
       inset: "rounded-xl bg-surface-inset p-3",
       interactive:
         "rounded-2xl border border-(--surface-card-border) bg-(--surface-card-bg) p-surface shadow-(--surface-card-shadow) outline-none transition-[background-color,border-color,transform] duration-(--duration-quick) hover:border-border-strong hover:bg-surface-2 focus-visible:ring-[3px] focus-visible:ring-ring/50 active:scale-[0.99] active:duration-(--duration-instant) aria-disabled:pointer-events-none aria-disabled:opacity-60",

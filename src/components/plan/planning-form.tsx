@@ -11,7 +11,7 @@ import {
 } from "@/components/forms/form-parts";
 import { savePlanning } from "@/lib/actions/recurring";
 import { paiseToInput } from "@/lib/format";
-import { IDLE } from "@/lib/forms";
+import { IDLE } from "@/lib/form-state";
 import { cn } from "@/lib/utils";
 
 const useSavePlanning = () => React.useActionState(savePlanning, IDLE);

@@ -4,7 +4,7 @@ import { ArrowRight, CalendarSearch, ChartPie, Droplets, Zap } from "lucide-reac
 
 import { TodayReviewed } from "@/components/rewards/today-reviewed";
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
+import { HubTabs } from "@/components/layout/hub-tabs";
 import {
   ComparisonCard,
   ComparisonLine,
@@ -90,7 +90,7 @@ export default async function InsightsPage({
           />
         </div>
       </div>
-      <SectionTabs section="insights" />
+      <HubTabs hub="insights" />
       {selection.kind === "today" && <TodayReviewed today={today} />}
     </>
   );

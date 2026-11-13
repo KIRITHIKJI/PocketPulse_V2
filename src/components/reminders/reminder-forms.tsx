@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import type { ReminderSettings } from "@/domain";
 import { saveBrowserNotifications, saveReminderSchedule } from "@/lib/actions/reminders";
-import { IDLE } from "@/lib/forms";
+import { IDLE } from "@/lib/form-state";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 

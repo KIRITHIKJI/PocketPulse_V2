@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { randomUUID } from "node:crypto";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { Surface } from "@/components/ui/surface";
 import { indexById, toLocalTime } from "@/domain";
@@ -38,8 +37,8 @@ export default async function NewTransactionPage({
       <PageHeader
         title="Full form"
         description="Only amount and category are needed; the date, time and wallet are filled in."
+        tabs="add"
       />
-      <SectionTabs section="record" />
       <Surface className="w-full max-w-3xl">
         <TransactionForm
           kit={kit}

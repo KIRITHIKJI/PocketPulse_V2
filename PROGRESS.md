@@ -207,6 +207,81 @@ Migration `20261112000100_v2_loans_cards_reconciliation.sql`, pushed to V2 by yo
   a same-day duplicate, entries before the opening date, a transfer of half the difference).
 - A write-off goes to the Other category (no "Written off" subcategory exists; none was added).
 
+### Phase 3A — tokens and navigation (2026-11-13) ✅
+
+No money logic, domain function, migration or schema change (diff check: nothing under
+`src/domain`, `src/lib/ledger`, `src/lib/data`, `src/lib/actions`, `src/lib/validation`,
+`src/lib/offline`, `src/lib/reports`, `supabase`, `src/app/api`; the two moved helpers below are
+byte-identical). No new dependency. `node_modules` was empty at the start; restored with `npm ci`
+from the lockfile.
+
+- **The 14 DB "placeholders"** are not tests of anything: each DB test file (14 of the 15;
+  `wallet-balances.test.ts` has none) ends with a `describe.skipIf(ADMIN_URL)` block holding one
+  empty `it.skip(SKIP_REASON)`. It exists only so that a run *without* `POCKETPULSE_TEST_DB_URL`
+  prints why the file did nothing; with a database it is skipped by design. 13 come from V1
+  (counted at `b8669a3`), Phase 2B added one with `loans-cards-reconciliation.test.ts`. None should
+  be a real test (no body, no subject), so none was changed.
+- **Navigation (spec §6.2):** sidebar = one column, eight links (Home, Transactions, Insights, Plan,
+  Player, Reports, Manage, Settings), one Add expense button, the slim one-line level widget at the
+  foot (links to Player). Add opens a sheet (Quick add, Type it, Say it, Full form); on laptops it is
+  a small panel beside the sidebar. Hub tabs (`PageHeader tabs=…`, text tabs on one hairline, sideways
+  scroll with an edge fade on phones): Insights (Insights, Money leaks), Plan (Budgets, Goals, Safe to
+  Spend, Survival Mode, Recurring), Player (Player status, Missions, Achievements, Rewards), Manage
+  (Accounts, Categories, Reminders); no Feed or Reviews yet. The add screens keep their tabs ("Ways to
+  record"). Phone bar: Home, Transactions, Add, Insights, Plan, More; More = Player, Reports, Manage,
+  Settings, each hub's screens listed under its row (every screen ≤ 2 taps). A hub's sidebar link
+  stays current on its tabs and detail pages (`/goals/[id]`, `/accounts/[id]`,
+  `/insights/category/[id]`). All URLs unchanged; the "You" sheet, `SECTION_TABS`, `nav-link.tsx` and
+  `section-tabs.tsx` are gone.
+- **Naming:** "Wallets" → "Accounts" in navigation, headings, the account page title and back link,
+  Settings, the opening-date note and the data-export list; "Safe to Spend" capitalised in titles,
+  labels and copy. Report lines "Wallets added during the period" (domain/report text) left as is.
+- **Tokens and primitives:** finance and progression surface families, muted metals, highlight
+  line, progression band background and pattern, elevation 0–3, `type-hero` and `type-label`
+  (details in `doc/DESIGN_PLAN.md`, V2 Phase 3A). Violet removed from the page glow, ordinary hero
+  card edges and the sync banner. Primitives in `src/components/layout/primitives.tsx` (`Hero`,
+  `Section`, `Panel`, `StatRow`/`Stat`, `DataList`/`DataRow`), not used by a screen yet: 3B onward.
+- **Shell size:** loaded on first use and preloaded when the browser is idle (then saved by the
+  worker for offline): the Add/More sheets, the two header menus (theme, account), the level-up
+  moment, the sign-out confirmation (`useLazyModule`). Each has a fallback if its code can't load at
+  all (Add → `/add`, More → `/settings`, theme → toggles, account → `/settings`, level-up skipped).
+  `zod` and the domain barrel left the client for most pages: the browser now imports
+  `hasFeedback`/`PlayerStatus` from `src/lib/rewards/feedback-shape.ts` and `IDLE`/`FormState` from
+  `src/lib/form-state.ts` (moved unchanged, re-exported from the old modules).
+- **Screen review:** shell on Home and Plan › Budgets at 375/1440 px dark/light, sidebar at
+  1366×768, Add and More sheets: `doc/screens/3A/` (`*-round1.png` before fixes). Fixed: tab divider
+  bleeding left of the title on laptops, no scroll hint on phone tabs, loose More sub-links, laptop
+  header border; a11y run found the level line's `aria-label` hid its visible text (fixed).
+- **Tests changed:** `e2e/shell.spec.ts` navigation test rewritten for the new map (more steps than
+  before: eight sidebar links in order, hub tab + current state, Add sheet on both sizes, More →
+  Categories in two taps) and a new "sidebar fits 1366×768 and 1440×900" test;
+  `tests/unit/navigation.test.ts` and the `BottomNav` tests rewritten for the new structure (route
+  existence and spec §5 coverage unchanged); `feedback-queue.test.tsx` waits for the level-up with
+  `findByTestId` (its code now loads on first use; same assertions); label renames in
+  `transactions.test.ts`, `domain/plan.test.ts` (test name) and `tests/db/plan.test.ts` (a comment).
+
+**Checks (final code, this machine):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 19 s |
+| `npm run typecheck` | ✅ | 7 s |
+| `npm test` | ✅ 39 files / 957 tests | 12 s |
+| `npm run build` | ✅ 42 pages | 16 s |
+| `npm run test:smoke` | ✅ 49 passed | 195 s incl. build |
+| shell + a11y e2e (desktop, mobile; while working) | ✅ 156 passed, 2 skipped (laptop-only fit tests on the phone project) | 79 s |
+| DB tests | not run (no DB code changed; one comment edited in `tests/db/plan.test.ts`) | — |
+
+**Sizes** (`scripts/route-js.mjs`, gzip KB; before = `e3e8c92`): every route smaller.
+Shared shell as the spec measures it (`/settings/data`): **246 → 175** (target ≤ 200 met).
+Layout segments alone (root + `(app)` layouts): 243 → 171. `/home` 267 → 248, `/transactions`
+260 → 227, `/add` 266 → 246, `/categories` 267 → 252, `/login` 189 → 160. Largest page on top of the
+shell: `/home` +77 KB, because `zod` now counts with the pages that use it instead of the shell.
+
+**Open:** Home still shows the level twice (sidebar line and Home's card) until 3B. At 375 px the
+More sheet's "Rewards" link wraps to a second line. `/home`, `/categories`, `/add` and the
+transaction forms still load `zod` (the full form validates in the browser); 3B can look at that.
+
 ### Checklist for Phases 2–6
 
 **Phase 2A — faster tests (test infrastructure only)**
@@ -236,14 +311,14 @@ Migration `20261112000100_v2_loans_cards_reconciliation.sql`, pushed to V2 by yo
 - [x] Full e2e suite once, clean
 
 **Phase 3 — redesign (prompts 3A–3F)**
-- [ ] 3A tokens, primitives, 8-link sidebar, Add sheet, hubs, mobile bar
+- [x] 3A tokens, primitives, 8-link sidebar, Add sheet, hubs, mobile bar
 - [ ] 3B Home
 - [ ] 3C emblem directions (your choice), RankEmblem/AchievementBadge, Player status (your approval)
 - [ ] 3D Missions, Achievements, Rewards, feedback moments
 - [ ] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring
 - [ ] 3F Transactions, Accounts, Categories, Reports, Reminders, Settings, auth, onboarding; mobile
       and consistency passes
-- [ ] Shared signed-in shell ≤ 200 KB gzip (from 246)
+- [x] Shared signed-in shell ≤ 200 KB gzip (from 246): 175 after 3A; keep it there through 3F
 
 **Phase 4**
 - [ ] 4A Intelligence Feed + Reviews (`feed_dismissals` migration)

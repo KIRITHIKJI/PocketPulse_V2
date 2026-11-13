@@ -79,7 +79,7 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
         <Button variant="ghost" size="sm" asChild className="-ml-3">
           <Link href="/accounts">
             <ArrowLeft aria-hidden="true" />
-            Wallets
+            Accounts
           </Link>
         </Button>
       </div>

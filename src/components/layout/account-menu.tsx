@@ -1,30 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
-import { LoaderCircle, LogOut, Settings, UserRound } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LoaderCircle, UserRound } from "lucide-react";
 
 import { useToast } from "@/components/feedback/toast";
+import { useHeaderMenu } from "@/components/layout/use-header-menu";
 import { useOffline } from "@/components/offline/offline-provider";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { lazyModule, useLazyModule } from "@/hooks/use-lazy-module";
 import { signOut } from "@/lib/auth/actions";
 import { clearSavedPages } from "@/lib/offline/pwa";
+
+const loadConfirm = lazyModule(() => import("@/components/layout/sign-out-confirm"));
 
 /** Signed-in user's menu: who is signed in, settings, and sign out. */
 export function AccountMenu({ email }: { email: string | null }) {
@@ -32,6 +20,10 @@ export function AccountMenu({ email }: { email: string | null }) {
   const { waiting } = useOffline();
   const { show } = useToast();
   const [confirming, setConfirming] = useState(false);
+  const { module: confirm, load: loadConfirmNow } = useLazyModule(loadConfirm);
+  const router = useRouter();
+  // Without the menu's code at all (offline, never saved), the button opens Settings instead.
+  const { menus, open, setOpen, openFirst } = useHeaderMenu(() => router.push("/settings"));
 
   function leave() {
     setConfirming(false);
@@ -49,59 +41,52 @@ export function AccountMenu({ email }: { email: string | null }) {
     });
   }
 
+  async function signOutAsked() {
+    if (waiting.length === 0) return leave();
+    // If the question can't load, signing out needs a connection anyway (see leave).
+    if (await loadConfirmNow()) setConfirming(true);
+    else leave();
+  }
+
+  const trigger = (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label="Account"
+      aria-haspopup="menu"
+      data-testid="account-menu"
+      onClick={openFirst}
+    >
+      {pending ? (
+        <LoaderCircle className="animate-spin" />
+      ) : (
+        <UserRound className="size-[1.15rem]" />
+      )}
+    </Button>
+  );
+
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" aria-label="Account" data-testid="account-menu">
-            {pending ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <UserRound className="size-[1.15rem]" />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="max-w-72">
-          <DropdownMenuLabel className="truncate">{email ?? "Signed in"}</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/settings">
-              <Settings aria-hidden="true" />
-              Settings
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={pending}
-            onSelect={() => (waiting.length > 0 ? setConfirming(true) : leave())}
-          >
-            <LogOut aria-hidden="true" />
-            Sign out
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {waiting.length === 1
-                ? "1 entry hasn’t synced"
-                : `${waiting.length} entries haven’t synced`}
-            </DialogTitle>
-            <DialogDescription>
-              They stay on this device and sync when you sign in here again. They won’t appear on
-              your other devices until then.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
-                Stay signed in
-              </Button>
-            </DialogClose>
-            <Button onClick={leave}>Sign out</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {menus ? (
+        <menus.AccountDropdown
+          trigger={trigger}
+          open={open}
+          onOpenChange={setOpen}
+          email={email}
+          pending={pending}
+          onSignOut={signOutAsked}
+        />
+      ) : (
+        trigger
+      )}
+      {confirm && (
+        <confirm.SignOutConfirm
+          open={confirming}
+          onOpenChange={setConfirming}
+          waiting={waiting.length}
+          onConfirm={leave}
+        />
+      )}
     </>
   );
 }

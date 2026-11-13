@@ -274,7 +274,7 @@ describe("Survival Mode", () => {
       ...o,
     });
 
-  it("shares every limit with Safe to spend", () => {
+  it("shares every limit with Safe to Spend", () => {
     const result = calc();
     const p = plan(result);
     expect(p.dailyAllowancePaise).toBe(result.suggestedDailyPaise);

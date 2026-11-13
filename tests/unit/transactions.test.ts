@@ -531,7 +531,7 @@ describe("opening-date wording", () => {
     expect(entriesBeforeOpeningText(1)).toMatch(/^1 entry is dated before the opening date/);
     expect(entriesBeforeOpeningText(2)).toMatch(/they’re treated as already included/);
     expect(beforeOpeningText("Cash", "1 Oct 2026")).toBe(
-      "This date is before Cash’s opening date (1 Oct 2026), so it’s treated as already included in the opening balance and won’t change Cash’s balance. Move the opening date earlier on Wallets if you want it counted.",
+      "This date is before Cash’s opening date (1 Oct 2026), so it’s treated as already included in the opening balance and won’t change Cash’s balance. Move the opening date earlier on Accounts if you want it counted.",
     );
     expect(beforeOpeningText("Cash", "1 Oct 2026", true)).toMatch(
       /^This entry is before.*doesn’t change/,

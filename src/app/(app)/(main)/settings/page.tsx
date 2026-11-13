@@ -56,7 +56,7 @@ const PAGES: { href: Route; label: string; icon: Icon }[] = [
 const MORE: { href: Route; title: string; description: string; icon: Icon }[] = [
   {
     href: "/accounts",
-    title: "Wallets",
+    title: "Accounts",
     description: "Opening balances, default wallet, archive.",
     icon: Wallet,
   },

@@ -167,9 +167,9 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
             </Notice>
           )}
           <PlanNote>
-            Setting money aside lowers what’s safe to spend, not your tracked balance. Bought what
-            you saved for? “I bought it” records the real expense and releases the money in one
-            step, so it’s subtracted once.
+            Setting money aside lowers Safe to Spend, not your tracked balance. Bought what you
+            saved for? “I bought it” records the real expense and releases the money in one step, so
+            it’s subtracted once.
           </PlanNote>
         </Surface>
 

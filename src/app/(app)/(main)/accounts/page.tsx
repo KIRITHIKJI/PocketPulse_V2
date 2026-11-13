@@ -33,7 +33,7 @@ import { formatLocalDate } from "@/lib/format";
 import { entriesBeforeOpeningText } from "@/lib/opening-note";
 import { ACCOUNT_KIND_LABELS } from "@/lib/validation/accounts";
 
-export const metadata: Metadata = { title: "Wallets" };
+export const metadata: Metadata = { title: "Accounts" };
 
 export default async function AccountsPage() {
   // Every user has a default wallet to preselect, even one who skipped onboarding.
@@ -58,9 +58,10 @@ export default async function AccountsPage() {
   return (
     <>
       <PageHeader
-        title="Wallets"
+        title="Accounts"
         description="Where your money is. Balances come only from what you enter."
         actions={<AccountFormDialog today={today} />}
+        tabs="manage"
       />
 
       <Surface variant="hero" className="gap-1">

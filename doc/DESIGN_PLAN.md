@@ -385,3 +385,83 @@ Items are 32 px tall with a mouse (44 px on touch), in `caption` type, two to a 
 14. **Finance is always clearer than game elements:** progression never sits above, inside or larger than a money figure, and never uses money colours.
 15. **No page gets slower:** no new client libraries for decoration; progression data rides on reads a screen already makes or loads after the money.
 16. **Accessibility:** WCAG 2.2 AA in both themes; focus always visible; every progress bar and icon button labelled.
+
+---
+
+## V2 — Phase 3A: tokens, primitives and navigation (2026-11-13)
+
+Sections 1–6 above are V1 history. For V2 the authorities are `doc/V2_BRIEF.md`, `doc/V2_SPEC.md`
+(§6 navigation, §8 design plan) and `doc/REDESIGN_V2.md` Part A. Where V1 rules above differ,
+these notes win: the type scale gains `label` (11, uppercase) and `hero` (48 / 36), and the page
+glow and the violet edge on ordinary hero cards are gone.
+
+### Tokens (`src/app/globals.css`, still three layers)
+
+- **Layer 1** adds night tones (`--pp-night-*`) and muted metals (`--pp-steel-*`,
+  `--pp-graphite-700`, `--pp-bronze-*`).
+- **Layer 2, finance family** (`--finance-page`, `-panel`, `-panel-border`, `-divider`, `-inset`):
+  flat, divided by hairlines. **Progression family** (`--progression-base`, `-surface`, `-raised`,
+  `-text`, `-muted`, `-light`, `-pattern-line`, `-vignette`) plus `--metal-steel/-silver/-graphite/
+  -bronze`, `--metal-line` (the 1px engraved edge) and `--highlight-line`. Progression stays deep in
+  the light theme: it is used as a header band, never as a dark page.
+- **Layer 3:** `--elevation-0…3`, `--section-divider`, `--panel-bg/-border/-shadow`,
+  `--surface-hero-edge` (neutral), `--progression-band-bg` (base + one soft light + darker corners)
+  and `--progression-pattern` (fine contour rings). `--level-mark-bg/-fg` for the small level mark.
+- **Type:** page title `type-title`, hero number `type-hero` (tabular), section title
+  `type-heading`, body `type-body`, small uppercase label `type-label`. Geist unchanged.
+- **Violet** is now only the primary action (Add expense, primary buttons), the active navigation
+  item (sidebar, bottom bar, hub tab underline) and small accents. Removed from the shell: the
+  violet page glow (dark and light), the violet top edge on `Surface variant="hero"`, the violet
+  sync banner. Per-screen violet (state-panel icons, the player chip on Home, badges) is left for
+  the screen prompts.
+
+### Layout primitives (`src/components/layout/primitives.tsx`)
+
+`Hero` (label, hero number, one line, optional aside; no box), `Section` (title row and a hairline
+above, no box), `Panel` (the one bordered box, for a separate object), `StatRow` + `Stat` (figures
+divided by vertical hairlines), `DataList` + `DataRow` (rows divided by hairlines; `href` makes the
+row a link). The page header with tabs is `PageHeader` with `tabs="plan" | "insights" | "player" |
+"manage" | "add"`. Later prompts reuse these instead of `Surface` boxes.
+
+### App shell — composition (written before coding)
+
+- **Dominant element:** the one Add expense button (violet, top of the sidebar; docked in the
+  middle of the phone bar). Nothing else in the shell is violet except the current place.
+- **Secondary:** eight quiet links in one column, no group headings; on phones five destinations
+  plus More.
+- **Removed or moved:** ~22 links in two columns under 7 headings → 8. Quick add / Type it / Say it /
+  Full form leave the sidebar for the Add sheet. The four Progress links leave the sidebar; Player is
+  one link and its screens are tabs. The level card (box, two lines, bar) → one slim line at the
+  foot of the sidebar. The phone "You" sheet with every section → More with four items, each hub's
+  screens under its row. The header's bottom border on laptops, the violet page glow.
+- **Hubs:** the boxed segmented control with icons → text tabs on one hairline, the current one
+  underlined in violet; on phones the row scrolls inside itself and fades at the edge.
+- **Difference from V1:** one column, one action, one accent; the page starts at the title instead
+  of under a glowing band.
+
+### Screen review — app shell (Home and Plan › Budgets; 375 and 1440 px, dark and light; sidebar
+at 1366×768). Screenshots in `doc/screens/3A/` (`*-round1.png` before the fixes, the rest after).
+
+1. *One dominant element?* Yes: Add expense is the only filled violet control in the shell. Page
+   content (Home's balance card) is unchanged until Phase 3B.
+2. *Bordered boxes at once:* the shell adds none (the sidebar is a column with one rule, the header
+   has no box). The page content still has more than three on Home (3B) and one on Budgets.
+3. *Template look without the logo?* The shell alone is still fairly standard; what makes it ours is
+   the single action, the slim level line and the hub tabs. The identity work (emblems, Home hero)
+   is Phases 3B–3C.
+4. *Anything from "must not look like"?* No gradients, glows, badges or dots added; the unread dot
+   on the bell is the existing one.
+5. *Same tokens and spacing?* Yes: all shell parts use the shared tokens and `type-*` roles.
+6. *Phone designed, light deliberate?* The phone bar, sheets and scrolling tabs are phone patterns;
+   light uses its own divider and level-mark tokens rather than inverted dark ones.
+
+**Fix round (round 1 → final):** the hub tabs' divider bled 32 px left of the title on laptops (bleed
+now only below `lg`); a cut-off tab on phones gave no hint the row scrolls (right-edge fade and end
+padding added); the More sheet's sub-links were spaced too loosely (tighter padding; at 375 px
+"Rewards" still wraps to a second line, kept, every target still 44 px tall); the laptop header's
+bottom border plus the sidebar rule framed the page as a box (border removed at `lg`). Also fixed
+from the a11y run: the slim level line had an `aria-label` that hid its visible text from its name
+(axe `label-content-name-mismatch`); its extra words are now screen-reader text inside the link.
+
+**Left for later prompts:** Home still shows the level twice (sidebar line and Home's player card)
+until Phase 3B removes the card's level; the screens' own boxes and violet icon tiles are 3B–3F.

@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { useToast } from "@/components/feedback/toast";
 import { syncRewardFeedback } from "@/lib/actions/rewards";
-import { type PlayerStatus, type RewardFeedback, hasFeedback } from "@/lib/rewards/feedback";
+import { type PlayerStatus, type RewardFeedback, hasFeedback } from "@/lib/rewards/feedback-shape";
 
 /** Achievements this device has greeted (shared with the rewards pages). */
 export const SEEN_ACHIEVEMENTS_KEY = "pp-seen-achievements";

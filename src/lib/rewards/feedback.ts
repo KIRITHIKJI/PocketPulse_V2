@@ -15,20 +15,9 @@ import {
 } from "@/domain";
 
 import type { RewardState } from "./engine";
+import type { PlayerStatus, RewardFeedback } from "./feedback-shape";
 
-export interface PlayerStatus {
-  xp: number;
-  level: number;
-  rank: string;
-  /** XP into this level, and how much the level holds. */
-  levelXp: number;
-  levelSpan: number;
-  progressBp: number;
-  /** Days in a row with something logged, counting today or yesterday as current. */
-  streakDays: number;
-  /** Server time it was read, so the newest of two copies wins. */
-  asOf: number;
-}
+export { type PlayerStatus, type RewardFeedback, hasFeedback } from "./feedback-shape";
 
 export function playerStatus(xp: number, streakDays: number, asOf: number): PlayerStatus {
   const level = levelFor(xp);
@@ -44,18 +33,6 @@ export function playerStatus(xp: number, streakDays: number, asOf: number): Play
   };
 }
 
-export interface RewardFeedback {
-  /** XP from routine awards (a logged day, a week with money set aside). Shown as a quiet line. */
-  routineXp: number;
-  routineReasons: string[];
-  /** Missions that moved but aren't done, for a small progress note ("Steady habit · 7 of 20"). */
-  progress: { code: string; title: string; progress: number; target: number }[];
-  missionsCompleted: { code: string; title: string; xp: number }[];
-  achievements: { code: string; title: string; description: string; xp: number }[];
-  levelUp: { from: number; to: number; rank: string; rankChanged: boolean } | null;
-  status: PlayerStatus;
-}
-
 const ROUTINE_REASONS: Record<string, string> = {
   logged_day: "Logged today",
   saved_week: "Set money aside this week",
@@ -63,17 +40,6 @@ const ROUTINE_REASONS: Record<string, string> = {
   budget_month: "A month within your budget",
   weekly_review: "Weekly review",
 };
-
-/** True when the feedback has anything to show at all. */
-export function hasFeedback(f: RewardFeedback): boolean {
-  return (
-    f.routineXp > 0 ||
-    f.progress.length > 0 ||
-    f.missionsCompleted.length > 0 ||
-    f.achievements.length > 0 ||
-    f.levelUp !== null
-  );
-}
 
 /**
  * The difference between two stored states. Comparing states (not one sync's own writes) means

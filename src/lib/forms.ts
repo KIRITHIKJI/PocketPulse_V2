@@ -7,17 +7,9 @@ import { z } from "zod";
 
 import { isLocalDate, parseAmountInput, parseSignedAmountInput } from "@/domain";
 
-export type FieldErrors = Partial<Record<string, string>>;
+import type { FieldErrors, FormState } from "./form-state";
 
-export type FormState = {
-  status: "idle" | "error" | "success";
-  message?: string;
-  fieldErrors?: FieldErrors;
-  /** Increments on every successful submit, so a client can react once (close a dialog). */
-  savedAt?: number;
-};
-
-export const IDLE: FormState = { status: "idle" };
+export { type FieldErrors, type FormState, IDLE } from "./form-state";
 
 /** First message per field, keyed by the dotted path ("extras.0.name"). */
 function fieldErrors(error: z.ZodError): FieldErrors {

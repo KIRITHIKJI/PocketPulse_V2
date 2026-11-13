@@ -35,6 +35,7 @@ export default async function RemindersPage() {
       <PageHeader
         title="Reminders"
         description="Optional, quiet nudges. All off by default, apart from budget alerts."
+        tabs="manage"
       />
 
       <div data-testid="reminders-open-note">

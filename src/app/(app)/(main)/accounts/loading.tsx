@@ -1,10 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Wallets' shape while it loads: header, the total, then the wallet grid (rows on phones). */
-export default function WalletsLoading() {
+/** Accounts' shape while it loads: header, the total, then the wallet grid (rows on phones). */
+export default function AccountsLoading() {
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-6">
-      <span className="sr-only">Loading Wallets…</span>
+      <span className="sr-only">Loading Accounts…</span>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-2">
           <Skeleton className="h-7 w-32" />

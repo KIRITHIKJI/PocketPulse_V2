@@ -12,7 +12,7 @@ import {
 } from "@/components/forms/form-parts";
 import { PrivacyFields, RemindersFields } from "@/components/settings/preference-forms";
 import { saveBudgetsStep, saveGoalStep, savePreferencesStep } from "@/lib/actions/onboarding";
-import { IDLE } from "@/lib/forms";
+import { IDLE } from "@/lib/form-state";
 import { paiseToInput } from "@/lib/format";
 import type { ReminderPreferences } from "@/lib/validation/settings";
 
@@ -137,7 +137,7 @@ export function GoalStepForm({
       </div>
       <p className="rounded-lg bg-muted/60 p-3 text-xs text-muted-foreground">
         Setting money aside for a goal later only earmarks it — it isn’t spending and doesn’t reduce
-        your tracked balance. It does lower what’s safe to spend.
+        your tracked balance. It does lower Safe to Spend.
       </p>
       <Actions pending={pending} label="Save & continue" footer={footer} />
     </ActionForm>

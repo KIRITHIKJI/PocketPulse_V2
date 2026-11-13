@@ -14,7 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { WALLET_KINDS } from "@/domain";
 import { saveBalancesStep } from "@/lib/actions/onboarding";
-import { IDLE } from "@/lib/forms";
+import { IDLE } from "@/lib/form-state";
 import { paiseToInput } from "@/lib/format";
 import { ACCOUNT_KIND_LABELS } from "@/lib/validation/accounts";
 import { MAX_EXTRA_ACCOUNTS } from "@/lib/validation/onboarding";
@@ -125,7 +125,7 @@ export function BalancesStepForm({
           </div>
           {row.saved ? (
             <p className="text-xs text-muted-foreground">
-              Saved already. Archive it on the Wallets page if you don’t use it.
+              Saved already. Archive it on the Accounts page if you don’t use it.
             </p>
           ) : (
             <Button

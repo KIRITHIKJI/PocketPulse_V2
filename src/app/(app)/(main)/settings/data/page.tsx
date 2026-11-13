@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Your data" };
 
 const EXPORT_CONTENTS = [
   "Every entry: income, expenses, refunds, transfers and goal allocations, with dates, amounts in paise and rupees, categories, wallets, notes and tags",
-  "Wallets with opening balances and dates",
+  "Accounts with opening balances and dates",
   "Categories, subcategories and rules",
   "Budgets, savings goals, recurring templates and planned expenses",
   "Profile, preferences, reminders and rewards",

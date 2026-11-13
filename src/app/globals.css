@@ -2,13 +2,18 @@
 @import "tw-animate-css";
 
 /*
- * PocketPulse design tokens, in three layers (doc/DESIGN_PLAN.md §2):
+ * PocketPulse design tokens, in three layers (doc/DESIGN_PLAN.md §2, V2 additions in §V2-3A):
  *   1. Base palette (--pp-*): raw values. Used only inside this file.
  *   2. Meaning (surfaces, text, money, progress, feedback, plus the shadcn names): per theme.
- *   3. Component (--button-*, --surface-*, --progress-*, --toast-*): refer to layer 2.
+ *      Two surface families share it: finance (--finance-*: calm, flat, divided by lines) and
+ *      progression (--progression-*, --metal-*: deep, layered, engraved). Progression stays
+ *      deep-toned in the light theme too, as a header band rather than a dark page.
+ *   3. Component (--button-*, --surface-*, --section-*, --panel-*, --progress-*, --toast-*):
+ *      refer to layer 2.
  * Dark (midnight/charcoal) is the default theme; `.light` is applied by next-themes.
- * Green = money in / done. Violet = action and progression. Blue = estimate. Silver = set aside.
- * Amber = attention. Red = over a limit you set, or an error. Spending itself has no colour.
+ * Violet is for the primary action, the active navigation item and small accents only.
+ * Green = money in / done. Blue = estimate. Silver = set aside. Amber = attention.
+ * Red = over a limit you set, or an error. Spending itself has no colour.
  */
 
 @custom-variant dark (&:where(.dark, .dark *));
@@ -54,6 +59,17 @@
   --pp-silver-500: oklch(0.52 0.03 265);
 
   --pp-white: oklch(1 0 0);
+
+  /* Progression: near-black night and muted metals (steel, graphite, soft silver, warm bronze). */
+  --pp-night-950: oklch(0.13 0.012 275);
+  --pp-night-900: oklch(0.155 0.014 275);
+  --pp-night-850: oklch(0.185 0.016 275);
+  --pp-steel-200: oklch(0.86 0.012 255);
+  --pp-steel-400: oklch(0.68 0.016 255);
+  --pp-steel-600: oklch(0.45 0.014 255);
+  --pp-graphite-700: oklch(0.3 0.008 270);
+  --pp-bronze-300: oklch(0.78 0.06 65);
+  --pp-bronze-500: oklch(0.6 0.07 60);
 
   /* Scales that don't change with the theme. */
   --duration-instant: 100ms;
@@ -130,13 +146,38 @@
     oklch(0.7 0.19 293 / 55%),
     transparent
   );
-  --gradient-page: radial-gradient(
-    60rem 30rem at 85% -10%,
-    oklch(0.7 0.19 293 / 12%),
-    transparent 60%
-  );
+  /* Finance pages: a faint neutral light at the top, no violet wash. */
+  --gradient-page: radial-gradient(60rem 24rem at 70% -12%, oklch(1 0 0 / 3.5%), transparent 65%);
 
   --shadow-tint: oklch(0.08 0.02 275);
+
+  /* Finance family: flat, sections divided by hairlines, a panel only for a separate object. */
+  --finance-page: var(--surface-page);
+  --finance-panel: var(--surface-1);
+  --finance-panel-border: var(--border-subtle);
+  --finance-divider: oklch(1 0 0 / 7%);
+  --finance-inset: var(--surface-inset);
+
+  /* Progression family: three depth layers and fine lines. */
+  --progression-base: var(--pp-night-950);
+  --progression-surface: var(--pp-night-900);
+  --progression-raised: var(--pp-night-850);
+  --progression-text: var(--pp-ink-50);
+  --progression-muted: var(--pp-steel-400);
+  --progression-light: oklch(0.7 0.03 275 / 16%);
+  --progression-pattern-line: oklch(1 0 0 / 4%);
+  --progression-vignette: oklch(0.08 0.01 275 / 70%);
+
+  --metal-steel: var(--pp-steel-400);
+  --metal-silver: var(--pp-steel-200);
+  --metal-graphite: var(--pp-graphite-700);
+  --metal-bronze: var(--pp-bronze-300);
+  /* The 1px engraved highlight on progression edges and emblems. */
+  --metal-line: oklch(1 0 0 / 12%);
+  --highlight-line: oklch(1 0 0 / 6%);
+  /* A small mark that stands for the level outside progression screens (sidebar, Home). */
+  --level-mark-bg: var(--pp-night-900);
+  --level-mark-fg: var(--pp-steel-200);
 
   /* shadcn names, kept as layer-2 aliases so every screen works during the redesign. */
   --background: var(--surface-page);
@@ -227,13 +268,34 @@
     oklch(0.5 0.23 292 / 40%),
     transparent
   );
-  --gradient-page: radial-gradient(
-    60rem 30rem at 85% -10%,
-    oklch(0.5 0.23 292 / 7%),
-    transparent 60%
-  );
+  --gradient-page: none;
 
   --shadow-tint: oklch(0.3 0.04 275);
+
+  --finance-page: var(--surface-page);
+  --finance-panel: var(--surface-1);
+  --finance-panel-border: var(--border-subtle);
+  --finance-divider: oklch(0.21 0.03 275 / 9%);
+  --finance-inset: var(--surface-inset);
+
+  /* Progression stays deep in light: it is drawn as a header band, not a dark page. */
+  --progression-base: oklch(0.17 0.014 275);
+  --progression-surface: oklch(0.2 0.016 275);
+  --progression-raised: oklch(0.235 0.018 275);
+  --progression-text: var(--pp-ink-50);
+  --progression-muted: var(--pp-steel-400);
+  --progression-light: oklch(0.75 0.03 275 / 18%);
+  --progression-pattern-line: oklch(1 0 0 / 5%);
+  --progression-vignette: oklch(0.1 0.01 275 / 60%);
+
+  --metal-steel: var(--pp-steel-600);
+  --metal-silver: var(--pp-steel-200);
+  --metal-graphite: var(--pp-graphite-700);
+  --metal-bronze: var(--pp-bronze-500);
+  --metal-line: oklch(0.21 0.03 275 / 16%);
+  --highlight-line: oklch(1 0 0 / 70%);
+  --level-mark-bg: var(--surface-inset);
+  --level-mark-fg: var(--pp-ink-600);
 
   --background: var(--surface-page);
   --background-elevated: oklch(0.995 0.002 275);
@@ -299,6 +361,32 @@
   --progress-height: 0.5rem;
 
   --toast-bg: var(--surface-overlay);
+
+  /* Elevation: 0 flat, 1 a panel, 2 a raised object, 3 an overlay (sheet, dialog). */
+  --elevation-0: none;
+  --elevation-1: 0 1px 0 0 var(--highlight-line) inset;
+  --elevation-2: var(--surface-raised-shadow);
+  --elevation-3: var(--surface-overlay-shadow);
+
+  /* Finance layout primitives (src/components/layout/primitives.tsx). */
+  --section-divider: var(--finance-divider);
+  --panel-bg: var(--finance-panel);
+  --panel-border: var(--finance-panel-border);
+  --panel-shadow: var(--elevation-1);
+  /* An ordinary hero's top edge: a neutral 1px highlight, not a violet line. */
+  --surface-hero-edge: linear-gradient(90deg, transparent, var(--highlight-line), transparent);
+
+  /* Progression band: base, one soft light behind the main object, a fine contour pattern that
+     fades toward the edges, and slightly darker corners. */
+  --progression-band-bg:
+    radial-gradient(ellipse 70% 90% at 50% 45%, transparent 55%, var(--progression-vignette)),
+    radial-gradient(28rem 20rem at 50% 42%, var(--progression-light), transparent 70%),
+    var(--progression-base);
+  --progression-pattern: repeating-radial-gradient(
+    circle at 50% 42%,
+    transparent 0 23px,
+    var(--progression-pattern-line) 23px 24px
+  );
 }
 
 @theme inline {
@@ -313,7 +401,8 @@
   --radius-2xl: 1.125rem;
   --radius-3xl: 1.5rem;
 
-  /* One type scale: caption 12, body 14, heading 16, title 24 (22 on phones), display 36 (32). */
+  /* One type scale: label 11 (uppercase), caption 12, body 14, heading 16 (section title),
+     title 24 (22 on phones, page title), display 36 (32), hero 48 (36, the lead figure). */
   --text-caption: 0.75rem;
   --text-caption--line-height: 1rem;
   --text-body: 0.875rem;
@@ -428,6 +517,28 @@
     font-size: 2.25rem;
     line-height: 2.5rem;
   }
+}
+
+/* The hero number: the one figure a screen leads with. Tabular, tight, large. */
+@utility type-hero {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums slashed-zero;
+  @media (min-width: 64rem) {
+    font-size: 3rem;
+    line-height: 3.25rem;
+  }
+}
+
+/* Small uppercase label with letter spacing, for scopes ("ALL ACCOUNTS · NOW") and ranks. */
+@utility type-label {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* Every money figure: aligned digits that don't jitter while animating, and a zero that reads as one.

@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { type FormState, IDLE } from "@/lib/forms";
+import { type FormState, IDLE } from "@/lib/form-state";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 type ButtonProps = Pick<

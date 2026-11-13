@@ -13,8 +13,9 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { LevelUpMoment, type LevelUp } from "@/components/feedback/level-up";
+import type { LevelUp } from "@/components/feedback/level-up";
 import { Button } from "@/components/ui/button";
+import { lazyModule, useLazyModule } from "@/hooks/use-lazy-module";
 import {
   type QueueState,
   type RewardTier,
@@ -68,6 +69,8 @@ type ToastContextValue = {
 };
 
 const ToastContext = React.createContext<ToastContextValue | null>(null);
+
+const loadLevelUp = lazyModule(() => import("@/components/feedback/level-up"));
 
 const VISIBLE_MS = 8_000;
 const MILESTONE_VISIBLE_MS = 10_000;
@@ -226,10 +229,22 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const tone = toast ? TONES[toast.tone] : null;
   const Icon = tone?.icon;
 
+  // The level-up moment's code arrives after the page is up. In the rare case it can't load at
+  // all, the moment is skipped so the rest of the queue still shows.
+  const { module: levelUpModule, load: loadLevelUpNow } = useLazyModule(loadLevelUp);
+  const levelId = level && current ? current.id : null;
+  React.useEffect(() => {
+    if (levelId === null || levelUpModule) return;
+    void loadLevelUpNow().then((loaded) => {
+      if (!loaded) setState((s) => dismissItem(s, levelId));
+    });
+  }, [levelId, levelUpModule, loadLevelUpNow]);
+  const LevelUpMoment = levelUpModule?.LevelUpMoment;
+
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {level && current && (
+      {level && current && LevelUpMoment && (
         <LevelUpMoment
           key={current.id}
           levelUp={level}

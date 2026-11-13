@@ -23,31 +23,37 @@ export function PlayerChipView({
   const status = useLiveStatus(initial);
   const fresh = status.xp === 0;
   if (compact) {
+    // One slim line: level mark, level and rank, a thin XP bar. The full picture is on Player.
+    const toNext = status.levelSpan - status.levelXp;
     return (
       <Link
         href="/rewards/status"
         data-testid="sidebar-player-chip"
-        className="flex flex-col gap-1.5 rounded-xl border border-(--surface-card-border) bg-(--surface-card-bg) px-3 py-2 transition-colors duration-(--duration-quick) outline-none hover:border-border-strong hover:bg-surface-2 focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="flex h-10 items-center gap-2.5 rounded-lg px-2 outline-none hover:bg-sidebar-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:h-11"
       >
-        <span className="flex items-center gap-2.5">
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-progress-xp/40 bg-primary-soft type-caption font-semibold text-progress-xp money">
-            {status.level}
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate type-caption font-semibold">
-              Level {status.level} · <span className="text-rank">{status.rank}</span>
-            </span>
-            <span className="truncate type-caption text-muted-foreground">
-              {fresh ? "Log to earn XP" : `${status.levelSpan - status.levelXp} XP to next level`}
-            </span>
+        <span
+          aria-hidden="true"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md border border-(--metal-line) bg-(--level-mark-bg) type-caption font-semibold text-(--level-mark-fg) money"
+        >
+          {status.level}
+        </span>
+        <span className="min-w-0 flex-1 truncate type-caption">
+          <span className="font-semibold">Level {status.level}</span>
+          <span className="text-text-tertiary"> · </span>
+          <span className="text-rank">{status.rank}</span>
+          <span className="sr-only">
+            {fresh ? ". Log to earn XP" : `. ${toNext} XP to the next level`}
           </span>
         </span>
-        <Progress
-          bp={status.progressBp}
-          tone="xp"
-          aria-label="XP towards the next level"
-          valueText={`${status.levelXp} of ${status.levelSpan} XP`}
-        />
+        <span
+          aria-hidden="true"
+          className="h-1 w-12 shrink-0 overflow-hidden rounded-full bg-progress-track"
+        >
+          <span
+            className="block h-full rounded-full bg-progress-xp"
+            style={{ width: `${Math.min(100, status.progressBp / 100)}%` }}
+          />
+        </span>
       </Link>
     );
   }

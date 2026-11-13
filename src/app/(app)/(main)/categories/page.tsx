@@ -136,6 +136,7 @@ export default async function CategoriesPage({
       <PageHeader
         title="Categories"
         description="Organise categories your way and set rules that sort entries for you."
+        tabs="manage"
       />
       <Tabs defaultValue={initial} className="flex flex-col gap-4 lg:gap-6">
         <TabsList aria-label="Category sections" className="self-start">

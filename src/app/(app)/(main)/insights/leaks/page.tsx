@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { Droplets, Settings, Zap } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
+import { HubTabs } from "@/components/layout/hub-tabs";
 import { NoteLine, PeriodPicker } from "@/components/insights/parts";
 import { WhatIf } from "@/components/insights/what-if";
 import { StatePanel } from "@/components/states/state-panel";
@@ -140,7 +140,7 @@ export default async function MoneyLeaksPage({
           />
         </div>
       </div>
-      <SectionTabs section="insights" />
+      <HubTabs hub="insights" />
       <nav aria-label="Group by" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <ul className="flex w-max items-center gap-1 rounded-xl border bg-muted/50 p-1">
           <li aria-hidden="true" className="px-2 type-caption text-muted-foreground">

@@ -8,7 +8,10 @@ import { StatePanel } from "@/components/states/state-panel";
 import { MOTION_STORAGE_KEY } from "@/lib/motion-preference";
 
 const pathname = vi.hoisted(() => ({ current: "/home" }));
-vi.mock("next/navigation", () => ({ usePathname: () => pathname.current }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => pathname.current,
+  useRouter: () => ({ push: vi.fn() }),
+}));
 
 describe("StatePanel", () => {
   it("announces errors and permission problems, but not plain empty states", () => {
@@ -28,7 +31,7 @@ describe("StatePanel", () => {
 });
 
 describe("BottomNav", () => {
-  it("has Home, Activity, a docked Add, Insights, Plan and You, and marks the current tab", () => {
+  it("has Home, Transactions, a docked Add, Insights, Plan and More, and marks the current tab", () => {
     pathname.current = "/goals";
     render(<BottomNav />);
     const nav = screen.getByRole("navigation", { name: "Primary" });
@@ -38,47 +41,71 @@ describe("BottomNav", () => {
         const control = item.querySelector("a, button")!;
         return control.getAttribute("aria-label") ?? control.textContent;
       });
-    expect(names).toEqual(["Home", "Activity", "Add expense", "Insights", "Plan", "You"]);
+    expect(names).toEqual(["Home", "Transactions", "Add expense", "Insights", "Plan", "More"]);
     expect(screen.getByRole("link", { name: "Plan" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Home" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("link", { name: "Add expense" })).toHaveAttribute("href", "/add");
-  });
-
-  it("keeps Add in place on add screens, marked as current", () => {
-    pathname.current = "/add/text";
-    render(<BottomNav />);
-    expect(screen.getByRole("link", { name: "Add expense" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(screen.getByRole("button", { name: "Add expense" })).toHaveAttribute(
+      "aria-haspopup",
+      "dialog",
     );
   });
 
-  it("You opens a sheet with Reports, so Reports is two taps away", async () => {
-    pathname.current = "/reports";
+  it("Add opens a sheet with the four ways to record", async () => {
+    pathname.current = "/home";
     const user = userEvent.setup();
     render(<BottomNav />);
-    await user.click(screen.getByRole("button", { name: "You" }));
-    const you = screen.getByRole("navigation", { name: "You" });
-    expect(within(you).getByRole("link", { name: "Parent report" })).toHaveAttribute(
-      "href",
-      "/reports",
-    );
-    expect(within(you).getByRole("link", { name: "Player status" })).toHaveAttribute(
+    await user.click(screen.getByRole("button", { name: "Add expense" }));
+    const ways = await screen.findByRole("navigation", { name: "Ways to add" });
+    expect(
+      within(ways)
+        .getAllByRole("link")
+        .map((link) => [link.querySelector("span span")?.textContent, link.getAttribute("href")]),
+    ).toEqual([
+      ["Quick add", "/add"],
+      ["Type it", "/add/text"],
+      ["Say it", "/add/voice"],
+      ["Full form", "/transactions/new"],
+    ]);
+  });
+
+  it("More opens a sheet with Player, Reports, Manage and Settings, each hub's screens under it", async () => {
+    pathname.current = "/categories";
+    const user = userEvent.setup();
+    render(<BottomNav />);
+    expect(screen.getByRole("button", { name: "More" })).toHaveClass("text-primary");
+    await user.click(screen.getByRole("button", { name: "More" }));
+    const more = await screen.findByRole("navigation", { name: "More" });
+    expect(within(more).getByRole("link", { name: "Reports" })).toHaveAttribute("href", "/reports");
+    expect(within(more).getByRole("link", { name: "Player" })).toHaveAttribute(
       "href",
       "/rewards/status",
     );
-    expect(screen.getByRole("navigation", { name: "All sections" })).toBeInTheDocument();
+    expect(within(more).getByRole("link", { name: "Manage" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    // Two taps from the bar: More, then the screen.
+    expect(
+      within(within(more).getByRole("list", { name: "Manage screens" })).getByRole("link", {
+        name: "Categories",
+      }),
+    ).toHaveAttribute("href", "/categories");
+    expect(within(more).getByRole("link", { name: "Settings" })).toHaveAttribute(
+      "href",
+      "/settings",
+    );
   });
 
-  it("with progress features off, the You sheet has no progression links", async () => {
+  it("with progress features off, the More sheet has no progression links", async () => {
     pathname.current = "/home";
     const user = userEvent.setup();
     render(<BottomNav showProgress={false} />);
-    await user.click(screen.getByRole("button", { name: "You" }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    const more = await screen.findByRole("navigation", { name: "More" });
     expect(
-      screen.queryByRole("link", { name: /Player status|Missions|Achievements|Rewards/ }),
+      within(more).queryByRole("link", { name: /Player|Missions|Achievements|Rewards/ }),
     ).toBeNull();
-    expect(screen.getAllByRole("link", { name: "Parent report" }).length).toBeGreaterThan(0);
+    expect(within(more).getByRole("link", { name: "Reports" })).toBeInTheDocument();
   });
 });
 

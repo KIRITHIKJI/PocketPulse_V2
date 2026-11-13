@@ -4,7 +4,6 @@ import { PiggyBank } from "lucide-react";
 
 import { CategoryBadge } from "@/components/categories/category-icon";
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
 import { GoalFormDialog } from "@/components/plan/goal-form";
 import { PlanNote } from "@/components/plan/parts";
 import { StatePanel } from "@/components/states/state-panel";
@@ -145,14 +144,14 @@ export default async function GoalsPage() {
         title="Savings goals"
         description="Pockets inside your tracked money: setting money aside isn’t spending."
         actions={goals.length > 0 ? <GoalFormDialog today={today} /> : undefined}
+        tabs="plan"
       />
-      <SectionTabs section="plan" />
 
       {goals.length === 0 ? (
         <StatePanel
           icon={PiggyBank}
           title="Save toward something specific"
-          description="Money you set aside stays in your balance. It comes off what’s safe to spend, and it never counts as spending."
+          description="Money you set aside stays in your balance. It comes off Safe to Spend, and it never counts as spending."
           actions={<GoalFormDialog today={today} />}
         />
       ) : (

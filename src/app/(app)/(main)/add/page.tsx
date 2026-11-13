@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Check, Settings2, Zap } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { SectionTabs } from "@/components/layout/section-tabs";
 import { StatePanel } from "@/components/states/state-panel";
 import { QuickAdd } from "@/components/transactions/quick-add";
 import { TileEditor } from "@/components/transactions/tile-editor";
@@ -103,8 +102,8 @@ export default async function QuickAddPage({
             </Link>
           </Button>
         }
+        tabs="add"
       />
-      <SectionTabs section="record" />
 
       {tiles.length > 0 ? (
         <QuickAdd

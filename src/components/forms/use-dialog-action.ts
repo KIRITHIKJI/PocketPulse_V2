@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { type FormState, IDLE } from "@/lib/forms";
+import { type FormState, IDLE } from "@/lib/form-state";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
