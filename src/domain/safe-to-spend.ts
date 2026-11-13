@@ -2,10 +2,16 @@
  * Safe-to-spend / Pocket-Money Survival planning model.
  *
  *   flexible = consolidated tracked balance (now)
+ *            − money you lent that hasn't come back yet
  *            − money set aside for savings goals
  *            − unpaid commitments due on or before the horizon end
  *            − optional minimum reserve
  *
+ * - The tracked balance is the net position: card debt and loans you owe are already inside it,
+ *   so a card bill or a loan repayment is never subtracted again. Money you lent (a `loan_lent`
+ *   account above zero) is yours but can't be spent until it comes back, so it's left out; when
+ *   it's repaid, the transfer into a wallet brings it in. A lent account below zero (they paid
+ *   back more than they owed) is money you owe, so it stays in.
  * - Paid expenses are already inside the balance, so they are never subtracted again.
  * - A commitment counts as paid once it links to an active transaction (`paidTransactionId`),
  *   so the same bill is never both an expense and an unpaid commitment. If that payment is
@@ -59,7 +65,7 @@ interface SafeToSpendInput {
   /** Overrides the horizon end (defaults to the next income date). Inclusive. */
   horizonEndDate?: LocalDate | null;
   reservePaise?: Paise;
-  /** Complete days of recent spending used for the pace estimate (default 14). */
+  /** Complete days of recent spending averaged for Survival Mode (default 14). */
   paceLookbackDays?: number;
   /** How explanations write money and dates (the profile's currency, a readable date). */
   money?: (paise: Paise) => string;
@@ -74,6 +80,8 @@ export interface SafeToSpendResult {
   inputs: {
     today: LocalDate;
     balancePaise: Paise;
+    /** What `loan_lent` accounts hold above zero: owed to you, not spendable yet. */
+    lentOutPaise: Paise;
     earmarkedPaise: Paise;
     commitmentsDuePaise: Paise;
     reservePaise: Paise;
@@ -81,7 +89,7 @@ export interface SafeToSpendResult {
     horizonEndDate: LocalDate | null;
     /** The unpaid commitments that were subtracted. */
     commitmentIds: string[];
-    /** Average daily net spending over the lookback window; null without enough history. */
+    /** Average daily net spending over the past lookback days; null without any history. */
     recentDailySpendingPaise: Paise | null;
     paceLookbackDays: number;
   };
@@ -90,11 +98,6 @@ export interface SafeToSpendResult {
   daysUntilNextIncome: number | null;
   suggestedDailyPaise: Paise | null;
   suggestedWeeklyPaise: Paise | null;
-  /** Tracked balance just before the next income arrives, under `endBalanceAssumption`. */
-  expectedEndBalancePaise: Paise | null;
-  endBalanceAssumption: string | null;
-  /** At recent pace, whole days until flexible money runs out; null if pace unknown or zero. */
-  runOutInDays: number | null;
   warnings: string[];
   explanation: string[];
 }
@@ -132,9 +135,15 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
   if (input.balance && input.balance.asOfMs !== input.now) {
     throw new Error("The balance was taken at a different instant from this plan's");
   }
-  const balancePaise = (
-    input.balance ?? consolidatedBalanceAt(input.accounts, input.ledger, input.now, tz)
-  ).balancePaise;
+  const balance =
+    input.balance ?? consolidatedBalanceAt(input.accounts, input.ledger, input.now, tz);
+  const balancePaise = balance.balancePaise;
+  const lent = new Set(input.accounts.filter((a) => a.kind === "loan_lent").map((a) => a.id));
+  const lentOutPaise = sumPaise(
+    balance.accounts
+      .filter((b) => lent.has(b.accountId))
+      .map((b) => maxPaise(0, b.balancePaise ?? 0)),
+  );
   const earmarkedPaise = totalEarmarked(input.ledger, input.now);
 
   const missing: MissingInfo[] = [];
@@ -146,11 +155,15 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
   const due = unpaidCommitmentsDue(input.commitments, input.ledger, horizonEndDate);
   const commitmentsDuePaise = sumPaise(due.map((c) => c.amountPaise));
   const flexiblePaise = subtractPaise(
-    subtractPaise(subtractPaise(balancePaise, earmarkedPaise), commitmentsDuePaise),
+    subtractPaise(
+      subtractPaise(subtractPaise(balancePaise, lentOutPaise), earmarkedPaise),
+      commitmentsDuePaise,
+    ),
     reservePaise,
   );
 
-  // Recent pace: complete days before today, never reaching back before tracking started.
+  // Recent daily spending (what Survival Mode compares with): complete days before today, never
+  // reaching back before tracking started.
   const earliestTracking = input.accounts.length
     ? Math.min(...input.accounts.map((a) => trackingStartMs(a, tz)))
     : null;
@@ -173,9 +186,6 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
 
   let suggestedDailyPaise: Paise | null = null;
   let suggestedWeeklyPaise: Paise | null = null;
-  let expectedEndBalancePaise: Paise | null = null;
-  let endBalanceAssumption: string | null = null;
-  let runOutInDays: number | null = null;
   const warnings: string[] = [];
 
   if (daysUntilNextIncome !== null) {
@@ -185,29 +195,6 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
       multiplyPaise(suggestedDailyPaise, Math.min(7, daysUntilNextIncome)),
       maxPaise(0, flexiblePaise),
     );
-    const afterCommitments = subtractPaise(balancePaise, commitmentsDuePaise);
-    if (recentDailySpendingPaise !== null) {
-      expectedEndBalancePaise = subtractPaise(
-        afterCommitments,
-        multiplyPaise(recentDailySpendingPaise, daysUntilNextIncome),
-      );
-      endBalanceAssumption = `Assumes you keep spending about ${money(recentDailySpendingPaise)} a day (your average over the last ${paceDays} day${paceDays === 1 ? "" : "s"}) and pay the listed commitments.`;
-    } else {
-      expectedEndBalancePaise = subtractPaise(
-        afterCommitments,
-        multiplyPaise(suggestedDailyPaise, daysUntilNextIncome),
-      );
-      endBalanceAssumption = `Not enough history for a spending pace yet; assumes you spend exactly the suggested ${money(suggestedDailyPaise)} a day and pay the listed commitments.`;
-    }
-    if (recentDailySpendingPaise !== null && recentDailySpendingPaise > 0) {
-      runOutInDays =
-        flexiblePaise > 0 ? divRound(flexiblePaise, recentDailySpendingPaise, "floor") : 0;
-      if (runOutInDays < daysUntilNextIncome) {
-        warnings.push(
-          `At your recent pace of ${money(recentDailySpendingPaise)} a day, flexible money would last about ${runOutInDays} day${runOutInDays === 1 ? "" : "s"}, but your next income is ${daysUntilNextIncome} day${daysUntilNextIncome === 1 ? "" : "s"} away.`,
-        );
-      }
-    }
   }
   if (flexiblePaise < 0) {
     warnings.push(
@@ -224,6 +211,9 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
   const horizonText = horizonEndDate ? `due by ${dateText(horizonEndDate)}` : "with any due date";
   const explanation = [
     `Tracked balance now: ${money(balancePaise)} (only what you've recorded, not a verified bank balance).`,
+    ...(lentOutPaise > 0
+      ? [`Money you lent (${money(lentOutPaise)}) isn't counted until it comes back.`]
+      : []),
     `Set aside for savings goals: −${money(earmarkedPaise)}.`,
     `Unpaid commitments ${horizonText}: −${money(commitmentsDuePaise)} (${due.length} item${due.length === 1 ? "" : "s"}; already-paid bills are in your balance and aren't subtracted again).`,
   ];
@@ -247,6 +237,7 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
     inputs: {
       today,
       balancePaise,
+      lentOutPaise,
       earmarkedPaise,
       commitmentsDuePaise,
       reservePaise,
@@ -260,9 +251,6 @@ export function calculateSafeToSpend(input: SafeToSpendInput): SafeToSpendResult
     daysUntilNextIncome,
     suggestedDailyPaise,
     suggestedWeeklyPaise,
-    expectedEndBalancePaise,
-    endBalanceAssumption,
-    runOutInDays,
     warnings,
     explanation,
   };

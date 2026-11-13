@@ -1,7 +1,7 @@
 /**
  * How one ledger entry reads in lists and detail views: title, category label, wallet and a
  * signed amount whose sign follows the money model (expense out, income/refund in, transfer and
- * savings moves neutral). Pure; amounts are formatted with the domain formatter.
+ * savings moves neutral, a balance correction by its direction). Pure; amounts are formatted with the domain formatter.
  */
 import {
   type Account,
@@ -23,6 +23,8 @@ export const TYPE_LABELS: Record<TransactionType, string> = {
   transfer: "Transfer",
   allocation: "Set aside for a goal",
   allocation_release: "Released from a goal",
+  adjustment_in: "Balance correction",
+  adjustment_out: "Balance correction",
 };
 
 export type AmountTone = "out" | "in" | "neutral";
@@ -93,6 +95,15 @@ export function entryView(tx: Transaction, ctx: EntryContext): EntryView {
       break;
     case "transfer":
       walletLabel = `${walletName(tx.fromAccountId, ctx)} → ${walletName(tx.toAccountId, ctx)}`;
+      break;
+    // Not income or spending, so it keeps the neutral tone; the sign still shows the direction.
+    case "adjustment_in":
+      walletLabel = walletName(tx.accountId, ctx);
+      amountLabel = `+${amountLabel}`;
+      break;
+    case "adjustment_out":
+      walletLabel = walletName(tx.accountId, ctx);
+      amountLabel = `−${amountLabel}`;
       break;
     default:
       break;

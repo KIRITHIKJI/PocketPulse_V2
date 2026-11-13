@@ -9,7 +9,7 @@ if (existsSync(".env.e2e.local")) process.loadEnvFile(".env.e2e.local");
 const PORT = Number(process.env.PORT ?? 3100);
 const baseURL = `http://localhost:${PORT}`;
 const LEDGER_SPEC =
-  /(transactions(-batch)?|insights|plan|motion|report|rewards|appearance|offline)\.spec\.ts/;
+  /(transactions(-batch)?|insights|plan|motion|report|rewards|appearance|offline|accounts)\.spec\.ts/;
 // Money specs with a test that also runs at phone size (tagged @phone), each on its own account.
 const PHONE_LEDGER_SPEC = /(transactions(-batch)?|report|rewards|offline)\.spec\.ts/;
 

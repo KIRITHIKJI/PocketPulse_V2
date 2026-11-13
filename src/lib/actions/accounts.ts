@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 import { dbErrorMessage } from "@/lib/data/errors";
 import { requireSession } from "@/lib/data/session";
 import { type FormState, invalid, text } from "@/lib/forms";
+import { isLoanKind } from "@/domain";
 import { accountFormSchema, accountIdSchema } from "@/lib/validation/accounts";
+
+type AccountForm = Extract<
+  ReturnType<typeof accountFormSchema.safeParse>,
+  { success: true }
+>["data"];
 
 const DUPLICATE = "You already have an active wallet with that name.";
 
@@ -20,8 +26,29 @@ function parseAccount(formData: FormData) {
     kind: text(formData, "kind"),
     openingBalance: text(formData, "openingBalance"),
     openingDate: text(formData, "openingDate"),
+    counterparty: text(formData, "counterparty"),
+    creditLimit: text(formData, "creditLimit"),
+    statementDay: text(formData, "statementDay"),
+    dueDay: text(formData, "dueDay"),
   });
 }
+
+/** The columns a parsed form writes, besides currency and order. */
+function accountColumns(a: AccountForm) {
+  return {
+    name: a.name,
+    kind: a.kind,
+    opening_balance_paise: a.openingBalance,
+    opening_balance_date: a.openingDate,
+    // Fields of another kind are cleared, so changing a card back to a wallet leaves no limit.
+    counterparty: a.counterparty ?? null,
+    credit_limit_paise: a.creditLimit ?? null,
+    statement_day: a.statementDay ?? null,
+    due_day: a.dueDay ?? null,
+  };
+}
+
+const LOAN_DEFAULT = "The default wallet can’t be a loan. Make another wallet the default first.";
 
 export async function createAccount(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = parseAccount(formData);
@@ -37,12 +64,9 @@ export async function createAccount(_prev: FormState, formData: FormData): Promi
       .maybeSingle(),
   ]);
   const { error } = await supabase.from("accounts").insert({
-    name: parsed.data.name,
-    kind: parsed.data.kind,
+    ...accountColumns(parsed.data),
     // One currency per user, so totals never mix currencies.
     currency: profile?.currency ?? "INR",
-    opening_balance_paise: parsed.data.openingBalance,
-    opening_balance_date: parsed.data.openingDate,
     sort_order: Number(last?.sort_order ?? 0) + 1,
   });
   if (error) return { status: "error", message: dbErrorMessage(error, DUPLICATE) };
@@ -55,14 +79,17 @@ export async function updateAccount(_prev: FormState, formData: FormData): Promi
   if (!id.success) return { status: "error", message: "That wallet doesn’t exist." };
   if (!parsed.success) return invalid(parsed.error);
   const { supabase } = await requireSession();
+  if (isLoanKind(parsed.data.kind)) {
+    const { data: current } = await supabase
+      .from("accounts")
+      .select("is_default")
+      .eq("id", id.data)
+      .maybeSingle();
+    if (current?.is_default) return { status: "error", message: LOAN_DEFAULT };
+  }
   const { data, error } = await supabase
     .from("accounts")
-    .update({
-      name: parsed.data.name,
-      kind: parsed.data.kind,
-      opening_balance_paise: parsed.data.openingBalance,
-      opening_balance_date: parsed.data.openingDate,
-    })
+    .update(accountColumns(parsed.data))
     .eq("id", id.data)
     .select("id");
   if (error) return { status: "error", message: dbErrorMessage(error, DUPLICATE) };
@@ -79,6 +106,12 @@ export async function makeDefaultAccount(_prev: FormState, formData: FormData): 
   const id = idFrom(formData);
   if (!id) return { status: "error", message: "That wallet doesn’t exist." };
   const { supabase } = await requireSession();
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("kind")
+    .eq("id", id)
+    .maybeSingle();
+  if (account && isLoanKind(account.kind)) return { status: "error", message: LOAN_DEFAULT };
   const { error } = await supabase.rpc("set_default_account", { p_id: id });
   if (error) return { status: "error", message: dbErrorMessage(error) };
   return done("Default wallet changed. New entries will use it unless you pick another.");

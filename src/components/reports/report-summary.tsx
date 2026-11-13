@@ -81,6 +81,14 @@ export function Summary({
         testId="report-net"
         explanation="Income plus refunds, minus expenses."
       />
+      {report.correctionCount > 0 && (
+        <Row
+          label={`Corrections · ${report.correctionCount}`}
+          value={money(report.correctionsPaise)}
+          testId="report-corrections"
+          explanation={`From balance checks: ${money(report.correctionsInPaise)} in, ${money(report.correctionsOutPaise)} out. Not income or spending.`}
+        />
+      )}
       {report.beforeTrackingPaise !== 0 && (
         <Row
           label="Entries already in opening balances"

@@ -45,6 +45,7 @@ const SOURCE_LABELS: Record<TransactionSource, string> = {
   voice: "Voice",
   recurring: "Recurring template",
   import: "Import",
+  reconciliation: "Balance check",
 };
 
 export default async function TransactionDetailPage({

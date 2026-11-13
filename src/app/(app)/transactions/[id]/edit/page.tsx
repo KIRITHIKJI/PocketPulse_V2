@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
-import { PiggyBank } from "lucide-react";
+import { PiggyBank, Scale } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { StatePanel } from "@/components/states/state-panel";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
-import { indexById, occurredAtMs, toLocalDate, toLocalTime } from "@/domain";
+import { indexById, isAdjustment, occurredAtMs, toLocalDate, toLocalTime } from "@/domain";
 import { loadEntryKit } from "@/lib/data/entry-kit";
 import { getLedgerRecord, getSpendingLedger } from "@/lib/data/queries";
 import { entryView, refundOptions } from "@/lib/entry-view";
@@ -27,6 +27,24 @@ export default async function EditTransactionPage({ params }: { params: Promise<
     getSpendingLedger(),
   ]);
   if (!record) notFound();
+
+  if (isAdjustment(record)) {
+    return (
+      <>
+        <PageHeader title="Edit entry" />
+        <StatePanel
+          icon={Scale}
+          title="A balance correction can’t be edited"
+          description="It was worked out from one balance check. Delete it from the entry, then check the balance again."
+          actions={
+            <Button asChild>
+              <Link href={`/accounts/${record.accountId}`}>Open the account</Link>
+            </Button>
+          }
+        />
+      </>
+    );
+  }
 
   if (!isEntryType(record.type)) {
     return (

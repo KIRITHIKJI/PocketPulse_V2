@@ -93,7 +93,7 @@ export async function cancelBill(_prev: FormState, formData: FormData): Promise<
   return done("Bill cancelled. It’s no longer subtracted from safe-to-spend.");
 }
 
-/** A recurring income or expense: a forecast, booked only when each occurrence is confirmed. */
+/** A recurring income or expense: scheduled, booked only when each occurrence is confirmed. */
 export async function saveRecurring(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = recurringFormSchema.safeParse({
     id: text(formData, "id"),
@@ -137,7 +137,7 @@ export async function saveRecurring(_prev: FormState, formData: FormData): Promi
   return done(`Saved ${r.title}.`);
 }
 
-/** Pausing stops forecasting; resuming picks up at the next date instead of a pile of overdue. */
+/** Pausing stops scheduling; resuming picks up at the next date instead of a pile of overdue. */
 export async function setRecurringPaused(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = z.uuid().safeParse(text(formData, "id"));
   if (!id.success) return { status: "error", message: MISSING };
@@ -164,7 +164,7 @@ export async function setRecurringPaused(_prev: FormState, formData: FormData): 
     .select("id");
   if (error) return { status: "error", message: dbErrorMessage(error) };
   if (!data?.length) return { status: "error", message: MISSING };
-  return done(pause ? "Paused. It won’t be forecast until you resume it." : "Resumed.");
+  return done(pause ? "Paused. It won’t be scheduled until you resume it." : "Resumed.");
 }
 
 export async function archiveRecurring(_prev: FormState, formData: FormData): Promise<FormState> {

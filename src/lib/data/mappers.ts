@@ -14,6 +14,7 @@ import {
   type LedgerBalances,
   type CategoryRule,
   type Commitment,
+  type Reconciliation,
   type RecurringTemplate,
   type SavingsGoal,
   type Transaction,
@@ -22,6 +23,7 @@ import {
   categoryRuleSchema,
   categorySchema,
   commitmentSchema,
+  reconciliationSchema,
   recurringTemplateSchema,
   savingsGoalSchema,
   sumPaise,
@@ -115,6 +117,9 @@ export function rowToTransaction(row: Row): Transaction {
         fromAccountId: row.from_account_id,
         toAccountId: row.to_account_id,
       });
+    case "adjustment_in":
+    case "adjustment_out":
+      return transactionSchema.parse({ ...common, accountId: row.account_id });
     default:
       return transactionSchema.parse({ ...common, goalId: row.goal_id });
   }
@@ -140,6 +145,29 @@ export function rowToAccount(row: Row): Account {
     openingBalanceDate: localDate(row.opening_balance_date),
     isDefault: row.is_default ?? false,
     archivedAt: timestamp(row.archived_at),
+    counterparty: row.counterparty ?? null,
+    creditLimitPaise: optionalPaise(row.credit_limit_paise),
+    statementDay:
+      row.statement_day === null || row.statement_day === undefined
+        ? null
+        : Number(row.statement_day),
+    dueDay: row.due_day === null || row.due_day === undefined ? null : Number(row.due_day),
+  });
+}
+
+export function rowToReconciliation(row: Row): Reconciliation {
+  return reconciliationSchema.parse({
+    id: row.id,
+    ownerId: row.owner_id,
+    accountId: row.account_id,
+    asOf: timestamp(row.as_of),
+    statedBalancePaise: paise(row.stated_balance_paise),
+    recordedBalancePaise: paise(row.recorded_balance_paise),
+    differencePaise: paise(row.difference_paise),
+    correctionId: row.correction_id ?? null,
+    status: row.status,
+    note: row.note ?? null,
+    createdAt: timestamp(row.created_at),
   });
 }
 

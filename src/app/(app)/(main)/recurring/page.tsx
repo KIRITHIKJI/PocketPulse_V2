@@ -227,7 +227,7 @@ export default async function RecurringPage() {
                       Recurring items
                     </h2>
                     <p className="type-caption text-text-secondary">
-                      Schedules that forecast. Nothing is booked until you confirm it.
+                      Scheduled, not booked. Nothing counts until you confirm it.
                     </p>
                   </SurfaceHeader>
                   {active.length === 0 ? (
@@ -293,7 +293,7 @@ export default async function RecurringPage() {
       )}
 
       <Notice>
-        Forecast and Reminder items aren’t in your balance. Expected income never counts until you
+        Scheduled and Reminder items aren’t in your balance. Expected income never counts until you
         record it. Paying something means one real entry, and it leaves the upcoming list in that
         same save.
       </Notice>

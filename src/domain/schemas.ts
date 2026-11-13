@@ -7,6 +7,9 @@
  * - income / expense / refund move money into or out of one tracked account.
  * - transfer moves money between two of the user's own accounts (nets to zero overall).
  * - allocation / allocation_release only earmark money for a savings goal; no account changes.
+ * - adjustment_in / adjustment_out ("Balance correction") settle a balance check: the difference
+ *   between a real balance and the recorded one, on one account. They move that account's balance
+ *   and are never income or spending. Only a balance check makes them (`record_reconciliation`).
  *
  * REFUND CONVENTION (the only one used anywhere):
  * - A refund is its own `refund` transaction with a positive amount, linked to the original
@@ -35,6 +38,8 @@ export const TRANSACTION_TYPES = [
   "transfer",
   "allocation",
   "allocation_release",
+  "adjustment_in",
+  "adjustment_out",
 ] as const;
 export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 
@@ -45,6 +50,7 @@ export const TRANSACTION_SOURCES = [
   "voice",
   "recurring",
   "import",
+  "reconciliation",
 ] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 
@@ -140,6 +146,12 @@ const allocationReleaseSchema = z.object({
   goalId: z.uuid(),
 });
 
+const adjustmentSchema = z.object({
+  ...commonFields,
+  type: z.enum(["adjustment_in", "adjustment_out"]),
+  accountId: z.uuid(),
+});
+
 export const transactionSchema = z
   .discriminatedUnion("type", [
     incomeSchema,
@@ -148,6 +160,7 @@ export const transactionSchema = z
     transferSchema,
     allocationSchema,
     allocationReleaseSchema,
+    adjustmentSchema,
   ])
   .superRefine((tx, ctx) => {
     if (tx.type === "transfer" && tx.fromAccountId === tx.toAccountId) {
@@ -180,10 +193,53 @@ export type AllocationTransaction = Extract<
   Transaction,
   { type: "allocation" | "allocation_release" }
 >;
+export type AdjustmentTransaction = Extract<
+  Transaction,
+  { type: "adjustment_in" | "adjustment_out" }
+>;
+
+export function isAdjustment(tx: Transaction): tx is AdjustmentTransaction {
+  return tx.type === "adjustment_in" || tx.type === "adjustment_out";
+}
 
 // --- Accounts ---------------------------------------------------------------
 
-export const ACCOUNT_KINDS = ["cash", "bank", "upi_wallet", "card", "other"] as const;
+export const ACCOUNT_KINDS = [
+  "cash",
+  "bank",
+  "upi_wallet",
+  "card",
+  "other",
+  "credit_card",
+  "loan_borrowed",
+  "loan_lent",
+] as const;
+export type AccountKind = (typeof ACCOUNT_KINDS)[number];
+
+/** Places money is kept, as onboarding offers them (cards and loans are added later). */
+export const WALLET_KINDS = [
+  "cash",
+  "bank",
+  "upi_wallet",
+  "card",
+  "other",
+] as const satisfies readonly AccountKind[];
+
+/**
+ * A loan is an account for the person on the other side. Borrowing, lending and repaying are
+ * transfers with it, so they are never income or spending. A borrowed account below zero is what
+ * you owe; a lent account above zero is what you're owed.
+ */
+export const LOAN_KINDS = ["loan_borrowed", "loan_lent"] as const satisfies readonly AccountKind[];
+
+export function isLoanKind(kind: AccountKind): kind is (typeof LOAN_KINDS)[number] {
+  return kind === "loan_borrowed" || kind === "loan_lent";
+}
+
+/** Cards and loans usually sit below zero (money owed), so their figures are entered as positive. */
+export function holdsDebt(kind: AccountKind): boolean {
+  return kind === "credit_card" || isLoanKind(kind);
+}
 
 export const accountSchema = z.object({
   id: z.uuid(),
@@ -201,6 +257,12 @@ export const accountSchema = z.object({
   /** The wallet preselected in every form that needs an account (exactly one per user). */
   isDefault: z.boolean().default(false),
   archivedAt: isoDateTimeSchema.nullable().default(null),
+  /** Loans: who it's with. */
+  counterparty: z.string().trim().min(1).max(60).nullable().default(null),
+  /** Credit cards: the limit, and the days of the month the statement and payment fall on. */
+  creditLimitPaise: amountPaiseSchema.nullable().default(null),
+  statementDay: z.number().int().min(1).max(28).nullable().default(null),
+  dueDay: z.number().int().min(1).max(28).nullable().default(null),
 });
 export type Account = z.output<typeof accountSchema>;
 

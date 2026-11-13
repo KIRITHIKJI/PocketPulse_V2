@@ -225,7 +225,6 @@ test("Journey E: no next income date means no daily limit", async ({ page }) => 
   await expect(main(page).getByTestId("stp-daily")).toHaveText("—");
   await expect(main(page).getByTestId("stp-weekly")).toHaveText("—");
   await expect(main(page).getByTestId("stp-days")).toHaveText("—");
-  await expect(main(page).getByTestId("stp-end-balance")).toHaveText("—");
 
   await page.goto("/survival");
   await expect(main(page).getByTestId("income-date-prompt")).toContainText(
@@ -296,7 +295,7 @@ test(
     await dialog(page).getByRole("button", { name: "Add recurring item" }).click();
     await expect(dialog(page)).toBeHidden();
     const rent = main(page).getByTestId("due-item").filter({ hasText: RENT }).first();
-    await expect(rent).toContainText("Forecast");
+    await expect(rent).toContainText("Scheduled");
     await expect(rent).toContainText("Counted in safe-to-spend");
     expect(await homeBalance(page)).toBe(balance - 12_300);
     expect(await flexible(page)).toBe(before - 12_300 - 7_700);

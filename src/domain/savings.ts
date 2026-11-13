@@ -19,7 +19,7 @@ import {
 import { indexById, isActive, occurredAtMs } from "./ledger";
 import type { AllocationTransaction, Transaction } from "./schemas";
 import type { SavingsGoal } from "./plan-schemas";
-import { type Instant, type LocalDate, addDays, daysBetween, toLocalDate } from "./time";
+import { type Instant, type LocalDate, daysBetween } from "./time";
 
 /** Net earmarked per goal (allocations − releases), optionally as of an instant. */
 export function earmarkedByGoal(
@@ -169,40 +169,4 @@ export function goalMoves(goalId: string, ledger: readonly Transaction[]): Alloc
         isActive(tx),
     )
     .sort((a, b) => occurredAtMs(b) - occurredAtMs(a));
-}
-
-interface GoalForecast {
-  /** Net set aside per day so far, whole paise (floor). */
-  dailyPacePaise: Paise;
-  reachedOn: LocalDate;
-}
-
-/** A goal needs this much history before its pace means anything. */
-const MIN_FORECAST_ALLOCATIONS = 2;
-
-/**
- * When the goal would reach its target if money keeps being set aside at the pace so far, from the
- * first allocation until today. An estimate, and null when there's too little to base one on.
- */
-export function goalForecast(
-  goal: SavingsGoal,
-  ledger: readonly Transaction[],
-  now: Instant,
-  timeZone: string,
-): GoalForecast | null {
-  const moves = goalMoves(goal.id, ledger);
-  const allocations = moves.filter((tx) => tx.type === "allocation");
-  if (allocations.length < MIN_FORECAST_ALLOCATIONS) return null;
-  const saved = earmarkedForGoal(goal.id, ledger);
-  const remaining = subtractPaise(goal.targetPaise, saved);
-  if (remaining <= 0 || saved <= 0) return null;
-  const today = toLocalDate(now, timeZone);
-  const first = toLocalDate(occurredAtMs(allocations.at(-1)!), timeZone);
-  const days = Math.max(1, daysBetween(first, today));
-  const dailyPacePaise = divRound(saved, days, "floor");
-  if (dailyPacePaise <= 0) return null;
-  return {
-    dailyPacePaise,
-    reachedOn: addDays(today, divRound(remaining, dailyPacePaise, "ceil")),
-  };
 }

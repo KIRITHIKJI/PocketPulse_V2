@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { SelectField } from "@/components/forms/form-parts";
+import { isSpendingAccount } from "@/domain";
 import type { EntryKit } from "@/lib/data/entry-kit";
 
 export function WalletField({
@@ -22,7 +23,7 @@ export function WalletField({
       defaultValue={value ?? kit.defaultAccountId}
     >
       {kit.accounts
-        .filter((a) => !a.archivedAt)
+        .filter((a) => !a.archivedAt && isSpendingAccount(a))
         .map((a) => (
           <option key={a.id} value={a.id}>
             {a.name}

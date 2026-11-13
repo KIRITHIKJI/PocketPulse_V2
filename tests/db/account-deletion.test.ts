@@ -29,6 +29,7 @@ const OWNED_TABLES = [
   "streak_state",
   "sync_operations",
   "sync_devices",
+  "reconciliations",
 ];
 
 async function ownedCounts(db: TestDb, owner: string) {

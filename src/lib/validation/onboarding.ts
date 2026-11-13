@@ -4,7 +4,7 @@
  */
 import { z } from "zod";
 
-import { ACCOUNT_KINDS } from "@/domain";
+import { WALLET_KINDS } from "@/domain";
 import {
   amountField,
   balanceField,
@@ -45,7 +45,7 @@ export const balancesStepSchema = z
         z.object({
           id: z.uuid(),
           name: accountNameField,
-          kind: z.enum(ACCOUNT_KINDS, "Choose a type."),
+          kind: z.enum(WALLET_KINDS, "Choose a type."),
           balance: balanceField,
         }),
       )

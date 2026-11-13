@@ -179,14 +179,6 @@ export default async function BudgetsPage() {
   const pace = ({ budget, evaluation, previous }: Row) => (
     <p className="type-caption text-muted-foreground">
       {formatBasisPoints(evaluation.elapsedBp, 0)} of the period has passed.
-      {evaluation.projectedPaise !== null &&
-      evaluation.status !== "ended" &&
-      evaluation.status !== "not_started" ? (
-        <>
-          {" "}
-          At this pace: about <span className="money">{money(evaluation.projectedPaise)}</span>.
-        </>
-      ) : null}
       {previous ? (
         <>
           {" "}

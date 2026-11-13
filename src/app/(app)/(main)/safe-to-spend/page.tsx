@@ -66,14 +66,6 @@ export default async function SafeToSpendPage() {
         testId="stp-weekly"
         explanation={ok ? "Up to seven days of the daily limit." : undefined}
       />
-      <FigureRow
-        label="Expected balance before next income"
-        value={
-          result.expectedEndBalancePaise === null ? "—" : money(result.expectedEndBalancePaise)
-        }
-        testId="stp-end-balance"
-        explanation={result.endBalanceAssumption ?? undefined}
-      />
     </dl>
   );
 

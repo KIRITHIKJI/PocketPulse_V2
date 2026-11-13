@@ -17,6 +17,7 @@ import {
   isBeforeOpeningDate,
   parseAmountInput,
   suggestCategory,
+  isSpendingAccount,
 } from "@/domain";
 import { saveQuickAdd } from "@/lib/actions/transactions";
 import type { EntryKit } from "@/lib/data/entry-kit";
@@ -114,7 +115,7 @@ export function QuickAddForm({
   const firstSubmitAt = React.useRef<string | null>(null);
   const [pending, setPending] = React.useState(false);
 
-  const activeAccounts = kit.accounts.filter((a) => !a.archivedAt);
+  const activeAccounts = kit.accounts.filter((a) => !a.archivedAt && isSpendingAccount(a));
   const startAccount =
     entry.accountId && activeAccounts.some((a) => a.id === entry.accountId)
       ? entry.accountId

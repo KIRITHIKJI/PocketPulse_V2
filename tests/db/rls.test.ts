@@ -30,6 +30,7 @@ const PRIVATE_TABLES = [
   "streak_state",
   "sync_operations",
   "sync_devices",
+  "reconciliations",
 ];
 
 describe.skipIf(!ADMIN_URL)("row level security", () => {

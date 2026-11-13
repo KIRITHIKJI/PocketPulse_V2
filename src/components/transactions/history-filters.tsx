@@ -23,7 +23,15 @@ const TYPES: TransactionType[] = [
   "transfer",
   "allocation",
   "allocation_release",
+  "adjustment_in",
+  "adjustment_out",
 ];
+
+/** The two correction types share a label elsewhere; here they need telling apart. */
+const FILTER_LABELS: Partial<Record<TransactionType, string>> = {
+  adjustment_in: "Balance correction (in)",
+  adjustment_out: "Balance correction (out)",
+};
 
 /**
  * Search and filters as a plain GET form: the URL holds the state, so filtered views can be
@@ -122,7 +130,7 @@ export function HistoryFilterForm({
             <option value={SPENDING_FILTER}>Spending (expenses and refunds)</option>
             {TYPES.map((t) => (
               <option key={t} value={t}>
-                {TYPE_LABELS[t]}
+                {FILTER_LABELS[t] ?? TYPE_LABELS[t]}
               </option>
             ))}
           </SelectField>

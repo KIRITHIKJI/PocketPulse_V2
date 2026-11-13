@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { Info, Pencil, Plus } from "lucide-react";
 
 import {
@@ -21,7 +22,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Surface } from "@/components/ui/surface";
-import { ACCOUNT_KINDS } from "@/domain";
+import {
+  ACCOUNT_KINDS,
+  type AccountKind,
+  enteredBalanceLabel,
+  enteredFromBalance,
+  holdsDebt,
+  isLoanKind,
+} from "@/domain";
 import { createAccount, updateAccount } from "@/lib/actions/accounts";
 import { paiseToInput } from "@/lib/format";
 import { ACCOUNT_KIND_LABELS } from "@/lib/validation/accounts";
@@ -29,9 +37,13 @@ import { ACCOUNT_KIND_LABELS } from "@/lib/validation/accounts";
 type EditableAccount = {
   id: string;
   name: string;
-  kind: (typeof ACCOUNT_KINDS)[number];
+  kind: AccountKind;
   openingBalancePaise: number;
   openingBalanceDate: string;
+  counterparty: string | null;
+  creditLimitPaise: number | null;
+  statementDay: number | null;
+  dueDay: number | null;
 };
 
 /** The note shown wherever an opening balance is set. */
@@ -63,6 +75,9 @@ export function AccountFormDialog({
   );
   const err = state.fieldErrors ?? {};
   const prefix = account ? `account-${account.id}` : "account-new";
+  const [kind, setKind] = React.useState<AccountKind>(account?.kind ?? "bank");
+  // What's owed is typed as a positive amount on cards and loans (the sign is added on save).
+  const opening = account ? enteredFromBalance(account.kind, account.openingBalancePaise) : null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -83,7 +98,7 @@ export function AccountFormDialog({
         <DialogHeader>
           <DialogTitle>{editing ? `Edit ${account!.name}` : "Add a wallet"}</DialogTitle>
           <DialogDescription>
-            Cash, a bank account, a UPI app or anything else you keep money in.
+            Cash, a bank account, a UPI app, a credit card, or money you borrowed or lent.
           </DialogDescription>
         </DialogHeader>
         <ActionForm key={formKey} action={formAction} className="flex flex-col gap-4">
@@ -103,7 +118,8 @@ export function AccountFormDialog({
             id={`${prefix}-kind`}
             name="kind"
             label="Type"
-            defaultValue={account?.kind ?? "bank"}
+            value={kind}
+            onChange={(event) => setKind(event.currentTarget.value as AccountKind)}
             error={err.kind}
           >
             {ACCOUNT_KINDS.map((kind) => (
@@ -112,13 +128,67 @@ export function AccountFormDialog({
               </option>
             ))}
           </SelectField>
+          {isLoanKind(kind) && (
+            <Field
+              id={`${prefix}-counterparty`}
+              name="counterparty"
+              label={kind === "loan_borrowed" ? "Borrowed from" : "Lent to"}
+              defaultValue={account?.counterparty ?? ""}
+              maxLength={60}
+              autoComplete="off"
+              hint="Blank = the name above."
+              error={err.counterparty}
+            />
+          )}
+          {kind === "credit_card" && (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <MoneyField
+                id={`${prefix}-limit`}
+                name="creditLimit"
+                label="Credit limit"
+                defaultValue={paiseToInput(account?.creditLimitPaise ?? null)}
+                hint="Optional."
+                error={err.creditLimit}
+              />
+              <Field
+                id={`${prefix}-statement`}
+                name="statementDay"
+                label="Statement day"
+                type="number"
+                min={1}
+                max={28}
+                defaultValue={account?.statementDay ?? ""}
+                hint="Optional, 1–28."
+                error={err.statementDay}
+              />
+              <Field
+                id={`${prefix}-due`}
+                name="dueDay"
+                label="Payment due day"
+                type="number"
+                min={1}
+                max={28}
+                defaultValue={account?.dueDay ?? ""}
+                hint="Optional, 1–28."
+                error={err.dueDay}
+              />
+            </div>
+          )}
           <div className="grid gap-4 sm:grid-cols-2">
             <MoneyField
               id={`${prefix}-opening`}
               name="openingBalance"
-              label="Opening balance"
-              defaultValue={paiseToInput(account?.openingBalancePaise ?? null)}
-              hint="Blank = ₹0. Use a minus sign if it’s overdrawn."
+              label={
+                kind === "credit_card" || isLoanKind(kind)
+                  ? enteredBalanceLabel(kind)
+                  : "Opening balance"
+              }
+              defaultValue={paiseToInput(opening)}
+              hint={
+                holdsDebt(kind)
+                  ? "On the opening date. Blank = ₹0. Type it as a positive amount."
+                  : "Blank = ₹0. Use a minus sign if it’s overdrawn."
+              }
               error={err.openingBalance}
             />
             <Field

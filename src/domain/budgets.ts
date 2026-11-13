@@ -5,7 +5,14 @@
  */
 import { amountStats, netSpending } from "./aggregation";
 import { previousMonthStarts } from "./spending-trend";
-import { divRound, formatINR, ratioBasisPoints, subtractPaise, type Paise } from "./money";
+import {
+  divRound,
+  formatBasisPoints,
+  formatINR,
+  ratioBasisPoints,
+  subtractPaise,
+  type Paise,
+} from "./money";
 import type { Transaction } from "./schemas";
 import type { Budget } from "./plan-schemas";
 import { DEFAULT_TIME_SETTINGS, type Instant, type LocalDate, type TimeSettings } from "./time";
@@ -47,8 +54,6 @@ export interface BudgetEvaluation {
   usedBp: number;
   /** Share of the period elapsed at `now`, in bp (0–10 000). */
   elapsedBp: number;
-  /** Spending projected to the end of the period at the current pace; null before enough time passed. */
-  projectedPaise: Paise | null;
   /** Even-pace allowance for what's left of the period, per remaining day (floor); null if ended. */
   dailyAllowancePaise: Paise | null;
   status: BudgetStatus;
@@ -57,7 +62,7 @@ export interface BudgetEvaluation {
   explanation: string;
 }
 
-/** Projection needs at least this much of the period elapsed to avoid wild early guesses. */
+/** Pace is only compared once this much of the period has passed, so day one isn't "ahead". */
 const MIN_ELAPSED_FOR_PACE_BP = 1_000;
 
 export function evaluateBudget(
@@ -78,12 +83,13 @@ export function evaluateBudget(
   const elapsedMs = Math.min(Math.max(now - start, 0), end - start);
   const elapsedBp = divRound(elapsedMs * 10_000, end - start, "floor");
 
-  const projectedPaise =
-    elapsedBp >= MIN_ELAPSED_FOR_PACE_BP && now < end
-      ? divRound(Math.max(0, spentPaise) * (end - start), elapsedMs)
-      : now >= end
-        ? spentPaise
-        : null;
+  // Ahead of pace: the share of the budget used is more than the share of the period elapsed
+  // (spent / limit > elapsed / length), compared exactly in whole numbers.
+  const aheadOfPace =
+    elapsedBp >= MIN_ELAPSED_FOR_PACE_BP &&
+    now < end &&
+    BigInt(Math.max(0, spentPaise)) * BigInt(end - start) >
+      BigInt(budget.limitPaise) * BigInt(elapsedMs);
 
   const remainingDays = now >= end ? 0 : divRound(end - Math.max(now, start), 86_400_000, "ceil");
   const dailyAllowancePaise =
@@ -97,7 +103,7 @@ export function evaluateBudget(
   if (now < start) status = "not_started";
   else if (spentPaise > budget.limitPaise) status = "exceeded";
   else if (now >= end) status = "ended";
-  else if (projectedPaise !== null && projectedPaise > budget.limitPaise) status = "over_pace";
+  else if (aheadOfPace) status = "over_pace";
   else status = "on_track";
 
   const scope = budget.categoryId ? "this category" : "all spending";
@@ -107,8 +113,10 @@ export function evaluateBudget(
       ? `${money(remainingPaise)} left`
       : `${money(-remainingPaise)} over the target`,
   ];
-  if (status === "over_pace" && projectedPaise !== null) {
-    pieces.push(`at this pace you'd reach about ${money(projectedPaise)} by the end of the period`);
+  if (status === "over_pace") {
+    pieces.push(
+      `${formatBasisPoints(usedBp, 0)} used with ${formatBasisPoints(elapsedBp, 0)} of the period gone`,
+    );
   }
   return {
     budgetId: budget.id,
@@ -119,7 +127,6 @@ export function evaluateBudget(
     remainingPaise,
     usedBp,
     elapsedBp,
-    projectedPaise,
     dailyAllowancePaise,
     status,
     reachedThresholdsBp,

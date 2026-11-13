@@ -29,7 +29,8 @@ export interface RpcCall {
     | "pay_commitment"
     | "confirm_recurring"
     | "update_transaction"
-    | "set_transaction_deleted";
+    | "set_transaction_deleted"
+    | "record_reconciliation";
   args: Record<string, unknown>;
 }
 

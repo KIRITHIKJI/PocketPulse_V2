@@ -12,7 +12,6 @@ import {
   firstOccurrenceOnOrAfter,
   followingIncomeDate,
   forecastCommitments,
-  goalForecast,
   goalMoves,
   goalProgress,
   isScheduledOn,
@@ -170,7 +169,6 @@ describe("the plan: safe-to-spend from bills and recurring items", () => {
     expect(r.suggestedDailyPaise).toBeNull();
     expect(r.suggestedWeeklyPaise).toBeNull();
     expect(r.daysUntilNextIncome).toBeNull();
-    expect(r.expectedEndBalancePaise).toBeNull();
     // What's known is still shown: the next 30 days of bills are subtracted.
     expect(r.inputs.commitmentsDuePaise).toBe(50_000);
   });
@@ -221,7 +219,7 @@ describe("the plan: safe-to-spend from bills and recurring items", () => {
     expect(r.explanation.join(" ")).not.toContain("2026-12-01");
   });
 
-  it("warns when the recent pace runs out before the next income", () => {
+  it("doesn't predict running out, however fast the recent pace", () => {
     const ledger = Array.from({ length: 14 }, (_, i) =>
       expense(200_000, { occurredAt: ist(`2026-10-${String(27 + (i % 4)).padStart(2, "0")}`) }),
     );
@@ -231,8 +229,7 @@ describe("the plan: safe-to-spend from bills and recurring items", () => {
       ledger,
       nextIncomeDate: "2026-12-01",
     });
-    expect(r.runOutInDays).not.toBeNull();
-    expect(r.warnings.join(" ")).toMatch(/recent pace/);
+    expect(r.warnings.join(" ")).not.toMatch(/recent pace|run out|last about/);
   });
 });
 
@@ -293,6 +290,28 @@ describe("Survival Mode", () => {
   it("is on track when the recent pace fits", () => {
     const ledger = [expense(70_000, { occurredAt: ist("2026-11-05") })];
     expect(plan(calc({ ledger }), { ledger }).status).toBe("on_track");
+  });
+
+  it("words its status about the past 14 days and today, never about what will happen", () => {
+    const ledger = [expense(70_000, { occurredAt: ist("2026-11-05") })];
+    const fits = plan(calc({ ledger }), { ledger });
+    expect(fits.detail).toBe(
+      `Over the last 14 days you spent about ${money(5_000)} a day, within today’s ${money(fits.dailyAllowancePaise!)} a day.`,
+    );
+    const heavy = Array.from({ length: 4 }, (_, i) =>
+      expense(200_000, { occurredAt: ist(`2026-11-0${i + 5}`) }),
+    );
+    const above = plan(calc({ ledger: heavy }), { ledger: heavy });
+    expect(above.detail).toMatch(
+      /^Over the last 14 days you spent about .+ a day, more than today’s/,
+    );
+    const big = [expense(200_000, { occurredAt: ist("2026-11-10", "09:00") })];
+    const statuses = [fits, above, plan(calc({ ledger: big }), { ledger: big })];
+    for (const p of statuses) {
+      expect(`${p.headline} ${p.detail}`).not.toMatch(
+        /run out|would last|carry you|on course|you’ll make it|will/i,
+      );
+    }
   });
 
   it("says when there's no pace to compare with yet", () => {
@@ -428,19 +447,6 @@ describe("goals", () => {
       newest.id,
       oldest.id,
     ]);
-  });
-
-  it("forecasts from the pace so far, and only with a pace to go on", () => {
-    const g = goal(LAPTOP_GOAL, 100_000);
-    const one = [allocate(10_000, LAPTOP_GOAL, { occurredAt: ist("2026-11-01") })];
-    expect(goalForecast(g, one, NOW, TZ)).toBeNull();
-    const two = [...one, allocate(8_000, LAPTOP_GOAL, { occurredAt: ist("2026-11-05") })];
-    expect(goalForecast(g, two, NOW, TZ)).toEqual({
-      dailyPacePaise: 2_000,
-      reachedOn: "2026-12-21",
-    });
-    const reached = [...two, allocate(82_000, LAPTOP_GOAL, { occurredAt: ist("2026-11-06") })];
-    expect(goalForecast(g, reached, NOW, TZ)).toBeNull();
   });
 
   it("a purchase releases the price or all that's saved, whichever is less", () => {

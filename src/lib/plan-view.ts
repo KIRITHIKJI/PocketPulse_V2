@@ -1,6 +1,6 @@
 /**
  * What's due, as one list for the screens: saved bills and recurring occurrences, each labelled
- * as forecast or reminder until it actually happens. Pure; every amount comes from the records.
+ * as scheduled or reminder until it actually happens. Pure; every amount comes from the records.
  */
 import {
   type Category,
@@ -15,7 +15,7 @@ import {
   unpaidCommitmentsDue,
 } from "@/domain";
 
-export type DueLabel = "Bill" | "Forecast" | "Reminder";
+export type DueLabel = "Bill" | "Scheduled" | "Reminder";
 
 export interface DueItem {
   key: string;
@@ -78,7 +78,7 @@ export function dueItems(input: {
       amountPaise: t.amountPaise,
       dueDate: due.occurrence,
       overdue: due.occurrence < today,
-      label: t.mode === "remind" ? "Reminder" : "Forecast",
+      label: t.mode === "remind" ? "Reminder" : "Scheduled",
       counted: t.kind === "expense" && counted.has(due.key),
       commitmentId: null,
       templateId: t.id,

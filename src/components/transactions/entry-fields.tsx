@@ -5,6 +5,7 @@ import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Info, RotateCcw } from "lu
 
 import { CategoryPicker } from "@/components/categories/category-picker";
 import { Field, MoneyField, SelectField } from "@/components/forms/form-parts";
+import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   type CategoryChoice,
@@ -12,6 +13,8 @@ import {
   isBeforeOpeningDate,
   isLocalDate,
   isLocalTime,
+  isSpendingAccount,
+  looksLikeCardPayment,
   suggestCategory,
 } from "@/domain";
 import type { EntryKit } from "@/lib/data/entry-kit";
@@ -82,13 +85,26 @@ export function EntryFields({
   // Wallets offered: active ones, plus whichever this entry already uses (even if archived).
   const inUse = new Set([initial.accountId, initial.fromAccountId, initial.toAccountId]);
   const wallets = kit.accounts.filter((a) => !a.archivedAt || inUse.has(a.id));
-  const walletOptions = wallets.map((a) => (
-    <option key={a.id} value={a.id}>
-      {a.name}
-      {a.isDefault ? " (default)" : ""}
-      {a.archivedAt ? " (archived)" : ""}
-    </option>
-  ));
+  const optionsFor = (list: typeof wallets) =>
+    list.map((a) => (
+      <option key={a.id} value={a.id}>
+        {a.name}
+        {a.isDefault ? " (default)" : ""}
+        {a.archivedAt ? " (archived)" : ""}
+      </option>
+    ));
+  // Transfers reach every account, loans included (borrowing, repaying, paying a card).
+  const walletOptions = optionsFor(wallets);
+  // Spending and income come from places money is kept; a loan isn't one.
+  const spendingWalletOptions = optionsFor(
+    wallets.filter((a) => isSpendingAccount(a) || inUse.has(a.id)),
+  );
+
+  // An expense that reads like a card bill, when there's a credit card to pay: offer a transfer.
+  const cardToPay =
+    mode === "create" && type === "expense" && looksLikeCardPayment(`${description} ${merchant}`)
+      ? (kit.accounts.find((a) => a.kind === "credit_card" && !a.archivedAt) ?? null)
+      : null;
 
   const kind = type === "income" ? "income" : "expense";
   const deferredDescription = React.useDeferredValue(description);
@@ -246,8 +262,37 @@ export function EntryFields({
           onChange={(e) => setAccountId(e.target.value)}
           error={errors.accountId}
         >
-          {walletOptions}
+          {spendingWalletOptions}
         </SelectField>
+      )}
+
+      {cardToPay && (
+        <div
+          className="flex flex-col gap-2 rounded-lg border p-3 type-body"
+          role="status"
+          data-testid="card-payment-nudge"
+        >
+          <p>
+            This looks like paying your card bill. Record it as a transfer to {cardToPay.name} so
+            your spending isn’t counted twice?
+          </p>
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setFromAccountId(accountId === cardToPay.id ? kit.defaultAccountId : accountId);
+                setToAccountId(cardToPay.id);
+                setType("transfer");
+                setChosen(null);
+                setPickedByUser(false);
+              }}
+            >
+              Record as a transfer
+            </Button>
+          </div>
+        </div>
       )}
 
       <div className="grid grid-cols-2 gap-4">

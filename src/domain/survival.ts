@@ -146,8 +146,11 @@ export function survivalPlan(input: SurvivalInput): SurvivalPlan {
 
   const days = `${daysLeft} day${daysLeft === 1 ? "" : "s"}`;
   const pace = result.inputs.recentDailySpendingPaise;
+  const lookback = result.inputs.paceLookbackDays;
+  const past = `Over the last ${lookback} day${lookback === 1 ? "" : "s"} you spent about ${money(pace ?? 0)} a day`;
   const plan = { ...blank, cycle };
 
+  // Everything below describes today and the recorded past. Nothing predicts where it leads.
   if (result.flexiblePaise <= 0) {
     return {
       ...plan,
@@ -156,20 +159,20 @@ export function survivalPlan(input: SurvivalInput): SurvivalPlan {
       detail: `After savings, bills and your reserve, nothing flexible is left for the next ${days}. Releasing some savings or moving a bill could give you room.`,
     };
   }
-  if (result.runOutInDays !== null && result.runOutInDays < daysLeft) {
+  if (pace !== null && pace > daily) {
     return {
       ...plan,
       status: "at_risk",
-      headline: "Your money may run out a little early",
-      detail: `At your recent ${money(pace ?? 0)} a day it would last about ${result.runOutInDays} day${result.runOutInDays === 1 ? "" : "s"}. Spending around ${money(daily)} a day would carry you the full ${days}.`,
+      headline: "Recent days were above today’s daily amount",
+      detail: `${past}, more than today’s ${money(daily)} a day for the next ${days}.`,
     };
   }
   if (pace === null) {
     return {
       ...plan,
       status: "too_early",
-      headline: `${money(daily)} a day gets you there`,
-      detail: `That spreads your flexible money over ${days}. There’s no spending pace to compare with yet.`,
+      headline: `${money(daily)} a day until your next income`,
+      detail: `That spreads your flexible money over ${days}. There’s no recorded spending to compare with yet.`,
     };
   }
   if (spentTodayPaise > daily) {
@@ -177,13 +180,13 @@ export function survivalPlan(input: SurvivalInput): SurvivalPlan {
       ...plan,
       status: "watch",
       headline: "A bigger day today, and that’s fine",
-      detail: `You’ve spent ${money(spentTodayPaise)} today. You’re still on course: around ${money(daily)} a day from here covers the next ${days}.`,
+      detail: `You’ve spent ${money(spentTodayPaise)} today. Your daily amount from here is ${money(daily)} for the next ${days}.`,
     };
   }
   return {
     ...plan,
     status: "on_track",
     headline: "You’re on track",
-    detail: `Your recent ${money(pace)} a day fits within ${money(daily)} a day for the next ${days}.`,
+    detail: `${past}, within today’s ${money(daily)} a day.`,
   };
 }

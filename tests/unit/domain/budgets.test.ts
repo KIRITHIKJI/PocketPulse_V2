@@ -25,7 +25,6 @@ describe("evaluateBudget", () => {
     expect(r.remainingPaise).toBe(150_000);
     expect(r.usedBp).toBe(5_000);
     expect(r.elapsedBp).toBe(4_838); // 15/31, floored
-    expect(r.projectedPaise).toBe(310_000); // 150 000 × 31/15
     expect(r.status).toBe("over_pace");
     expect(r.dailyAllowancePaise).toBe(9_375); // 150 000 / 16 days left
     expect(r.reachedThresholdsBp).toEqual([5_000]);
@@ -69,7 +68,6 @@ describe("evaluateBudget", () => {
       [expense(100_000, { occurredAt: ist("2026-10-01", "08:00") })],
       istMs("2026-10-02"),
     );
-    expect(r.projectedPaise).toBeNull();
     expect(r.status).toBe("on_track");
   });
 

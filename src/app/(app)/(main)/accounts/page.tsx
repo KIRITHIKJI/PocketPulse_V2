@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Archive, ArchiveRestore, ChevronRight, Info, Star, Wallet } from "lucide-react";
 
 import { AccountFormDialog } from "@/components/accounts/account-form";
@@ -8,7 +9,16 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Surface } from "@/components/ui/surface";
-import { type AccountBalance, moneyFormatter, toLocalDate } from "@/domain";
+import {
+  type AccountBalance,
+  balanceWording,
+  enteredBalanceLabel,
+  enteredFromBalance,
+  holdsDebt,
+  isLoanKind,
+  moneyFormatter,
+  toLocalDate,
+} from "@/domain";
 import { makeDefaultAccount, setAccountArchived } from "@/lib/actions/accounts";
 import {
   type AccountRecord,
@@ -162,7 +172,14 @@ function AccountCard({
           </span>
           <div className="flex min-w-0 flex-1 flex-col">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <h3 className="min-w-0 truncate type-heading">{account.name}</h3>
+              <h3 className="min-w-0 truncate type-heading">
+                <Link
+                  href={`/accounts/${account.id}`}
+                  className="underline-offset-4 hover:underline"
+                >
+                  {account.name}
+                </Link>
+              </h3>
               {account.isDefault && (
                 <Badge>
                   <Star aria-hidden="true" />
@@ -176,7 +193,11 @@ function AccountCard({
           <div className="shrink-0 text-right">
             {tracked ? (
               <>
-                <p className="type-heading money">{money(balance!.balancePaise!)}</p>
+                <p className="type-heading money">
+                  {holdsDebt(account.kind)
+                    ? balanceWording(account, balance!.balancePaise!, money)
+                    : money(balance!.balancePaise!)}
+                </p>
                 <p className="type-body text-muted-foreground">now</p>
               </>
             ) : (
@@ -187,15 +208,20 @@ function AccountCard({
           </div>
         </div>
         <p className="type-body text-text-secondary">
-          Opening balance <span className="money">{money(account.openingBalancePaise)}</span> on{" "}
-          {formatLocalDate(account.openingBalanceDate)}
+          {holdsDebt(account.kind)
+            ? `${enteredBalanceLabel(account.kind)} at the start`
+            : "Opening balance"}{" "}
+          <span className="money">
+            {money(enteredFromBalance(account.kind, account.openingBalancePaise))}
+          </span>{" "}
+          on {formatLocalDate(account.openingBalanceDate)}
         </p>
         {beforeOpening > 0 && (
           <Notice tone="warning">{entriesBeforeOpeningText(beforeOpening)}</Notice>
         )}
         <div className="mt-auto -ml-2 flex flex-wrap items-center gap-1 lg:ml-0 lg:border-t lg:pt-2">
           <AccountFormDialog account={account} today={today} />
-          {!account.archivedAt && !account.isDefault && (
+          {!account.archivedAt && !account.isDefault && !isLoanKind(account.kind) && (
             <InlineAction
               action={makeDefaultAccount}
               fields={{ id: account.id }}

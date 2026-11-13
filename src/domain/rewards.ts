@@ -13,7 +13,7 @@
 import { netSpending, spendingEntries } from "./aggregation";
 import { isActive, occurredAtMs } from "./ledger";
 import { divRound } from "./money";
-import type { Transaction } from "./schemas";
+import { type Transaction, isAdjustment } from "./schemas";
 import type { Budget, SavingsGoal } from "./plan-schemas";
 import {
   type Instant,
@@ -127,8 +127,9 @@ export interface RewardResult {
   loggedDays: LocalDate[];
 }
 
+/** Goal moves and balance corrections aren't logging money, so they earn nothing. */
 const isLoggedEntry = (tx: Transaction) =>
-  isActive(tx) && tx.type !== "allocation" && tx.type !== "allocation_release";
+  isActive(tx) && tx.type !== "allocation" && tx.type !== "allocation_release" && !isAdjustment(tx);
 
 /** Local days something was logged on, sorted. */
 export function loggedDays(ledger: readonly Transaction[], timeZone: string): LocalDate[] {

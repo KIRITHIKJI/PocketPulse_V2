@@ -22,6 +22,7 @@ const TABLES = [
   "user_achievements",
   "user_quests",
   "streak_state",
+  "reconciliations",
 ] as const;
 
 const PAGE = 1000;

@@ -45,7 +45,7 @@ interface EditableRecurring {
 
 const CADENCE_LABELS = { daily: "Days", weekly: "Weeks", monthly: "Months", yearly: "Years" };
 
-/** A recurring income or expense: a schedule that forecasts, never an entry by itself. */
+/** A recurring income or expense: a schedule, never an entry by itself. */
 export function RecurringFormDialog({
   template,
   kit,
@@ -92,7 +92,7 @@ export function RecurringFormDialog({
         <DialogHeader>
           <DialogTitle>{editing ? `Edit ${template!.title}` : "Add a recurring item"}</DialogTitle>
           <DialogDescription>
-            This only forecasts. Nothing is booked as income or spending until you confirm it
+            This only schedules it. Nothing is booked as income or spending until you confirm it
             happened.
           </DialogDescription>
         </DialogHeader>

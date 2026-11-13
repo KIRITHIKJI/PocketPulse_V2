@@ -188,7 +188,19 @@ placeholders for any of them.
     status (`matched`, `corrected`, `open`), note, timestamps. Owner-only RLS.
   - `wallet_balances` gains the two new types in its `moves` step (`create or replace`).
   - New RPC `record_reconciliation(p_check jsonb, p_correction jsonb)`, SECURITY INVOKER, writes the
-    check and the correction in one transaction, idempotent by both client ids.
+    check and the correction in one transaction, idempotent by both client ids. **It works out the
+    recorded balance and the difference itself, at `as_of`, from `wallet_balances`, and never
+    trusts those figures from the client.** If the client's correction (amount or direction), or
+    the difference the screen showed, isn't the server's difference, it writes nothing and returns
+    `{status: "stale"}` with the current figures, so the screen can show them (change 2, Phase 2B
+    prompt).
+  - **A balance check needs a connection** (change 1, Phase 2B prompt). Saving a check or a
+    correction is never queued offline, because the correction depends on the recorded balance,
+    which can be stale on a device that's been offline. Offline, Check balance says so and saves
+    nothing. Undoing or deleting an existing correction stays an ordinary (queueable) command.
+  - **Cards and loans take positive amounts** (change 3). On a credit card or loan the user types
+    what they owe, or are owed, as a positive amount (opening balance and the real balance in a
+    check alike); the app converts the sign (`balanceFromEntered`, unit-tested for every kind).
 - **Risks:**
   - It touches the core formula, so `ledgerBalances`, `wallet_balances`, `summarizePeriod`, the
     report model, CSV and data export must all change together, with the DB equivalence test
@@ -359,8 +371,8 @@ date. "Consolidated" sums every account the user owns, including cards and loans
   then does it enter Safe to Spend. A `loan_lent` account that has gone negative (they paid back
   more than they owed) is treated as money you owe, so it stays in the base.
 - **Tests (Phase 2B):** a unit test in the domain (`calculateSafeToSpend`) with ₹1,000 cash, a
-  ₹300 card debt, a ₹200 loan owed and ₹500 lent: tracked balance ₹0 (1,000 − 300 − 200 + 500),
-  Safe to Spend base ₹500 (lent money excluded). Then the friend repays ₹200: base ₹700, tracked
+  ₹300 card debt, a ₹200 loan owed and ₹500 lent: tracked balance ₹1,000 (1,000 − 300 − 200 + 500;
+  corrected in Phase 2B, the Phase 1 text said ₹0), Safe to Spend base ₹500 (lent money excluded). Then the friend repays ₹200: base ₹700, tracked
   balance unchanged. Plus the negative-lent edge case. The DB test checks the same figures from
   `wallet_balances`.
 - The `inputs` of a Safe to Spend result gain `lentOutPaise`, and its explanation gets a line:
@@ -396,8 +408,9 @@ All changes are additive. No column is dropped, no type narrowed, no data rewrit
 
 Domain and app changes that go with it: `TRANSACTION_TYPES`, `ACCOUNT_KINDS`, `accountDelta`,
 `summarizePeriod` (+ `adjustmentsInPaise`, `adjustmentsOutPaise`), report model and CSV, data export,
-mappers, entry view, history filters, the mutation layer (`reconcile` command kind), the offline queue
-(the same command), rewards (corrections earn nothing).
+mappers, entry view, history filters, the mutation layer (a `reconcile` operation beside the ledger
+commands, deliberately **outside** the queued `LedgerCommand` union so it can't be queued; its Undo
+is an ordinary `delete` command), rewards (corrections earn nothing).
 
 ### Phase 4 — migration `…_v2_feed_habits`
 
@@ -770,7 +783,12 @@ wasn't run.
       `duplicate` (unit, DB, e2e).
 - [ ] `wallet_balances` equals `ledgerBalances` on data that includes adjustments, cards and loans.
 - [ ] RLS: another user can't read or write `reconciliations` or call the RPC for someone else.
-- [ ] Offline: a queued correction syncs once.
+- [ ] Offline: a balance check made offline is not queued; nothing is saved and the screen says
+      it needs a connection (changed in Phase 2B: checks are never queued).
+- [ ] `record_reconciliation` works out the recorded balance and difference itself; a correction
+      that doesn't match writes nothing and returns `stale` with the current figures (DB test).
+- [ ] Cards and loans: typed amounts are positive and the sign is converted (a unit test per
+      account kind).
 - [ ] Full browser suite: one clean run.
 
 **Phase 3**
@@ -810,7 +828,8 @@ wasn't run.
 
 ## 13. Known gaps carried from V1 (unchanged by V2 unless listed)
 
-- Not deployed; real-phone install, offline on a phone, Safari/iOS and speech on a phone unverified.
+- V1 is deployed on Vercel (corrected in Phase 2B; the Phase 1 text said "Not deployed"). Real-phone
+  install, offline on a phone, Safari/iOS and speech on a phone are unverified.
 - Reminders only appear while the app is open (no push service).
 - `npm audit`: a moderate `minimatch` advisory via ESLint tooling.
 - Sidebar clicks are sometimes ~1 s (cause unknown, PROGRESS "Test fixes").

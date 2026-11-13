@@ -7,5 +7,6 @@
   "report": ["desktop", "mobile"],
   "rewards": ["desktop", "mobile"],
   "appearance": ["desktop"],
-  "offline": ["desktop", "mobile"]
+  "offline": ["desktop", "mobile"],
+  "accounts": ["desktop"]
 }

@@ -159,9 +159,6 @@ describe("calculateSafeToSpend", () => {
     expect(r.daysUntilNextIncome).toBe(12);
     expect(r.suggestedDailyPaise).toBe(10_833); // floor(130 000 / 12)
     expect(r.suggestedWeeklyPaise).toBe(75_831);
-    expect(r.expectedEndBalancePaise).toBe(186_000 - 16_000 - 12 * 1_000);
-    expect(r.endBalanceAssumption).toMatch(/₹10 a day/);
-    expect(r.runOutInDays).toBe(130);
     expect(r.warnings).toEqual([]);
     expect(r.explanation.join("\n")).toMatch(/Flexible money: ₹1,300\./);
     expect(r.explanation.join("\n")).toMatch(/not a verified bank balance/);
@@ -179,7 +176,6 @@ describe("calculateSafeToSpend", () => {
     expect(r.missing).toEqual(["next_income_date"]);
     expect(r.suggestedDailyPaise).toBeNull();
     expect(r.suggestedWeeklyPaise).toBeNull();
-    expect(r.expectedEndBalancePaise).toBeNull();
     expect(r.flexiblePaise).toBe(150_000); // conservative: all unpaid commitments
     expect(r.explanation.at(-1)).toMatch(/Add your next allowance or income date/);
   });
@@ -196,7 +192,7 @@ describe("calculateSafeToSpend", () => {
     expect(r.suggestedDailyPaise).toBeNull();
   });
 
-  it("warns when the recent pace would run out before income and when over-committed", () => {
+  it("warns about past-due bills and over-commitment, never about running out", () => {
     const ledger = [expense(140_000, { occurredAt: ist("2026-10-15") })]; // ₹100/day over 14 days
     const r = calculateSafeToSpend({
       accounts,
@@ -206,9 +202,8 @@ describe("calculateSafeToSpend", () => {
       nextIncomeDate: "2026-11-01",
     });
     expect(r.flexiblePaise).toBe(50_000);
-    expect(r.runOutInDays).toBe(5);
-    expect(r.warnings[0]).toMatch(/last about 5 days, but your next income is 12 days away/);
-    expect(r.warnings[1]).toMatch(/past due/);
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]).toMatch(/past due/);
 
     const over = calculateSafeToSpend({
       accounts,
@@ -223,7 +218,7 @@ describe("calculateSafeToSpend", () => {
     expect(over.warnings.join(" ")).toMatch(/more than your tracked balance/);
   });
 
-  it("uses the suggested limit as the assumption when there's no history yet", () => {
+  it("still gives a daily limit when there's no history yet", () => {
     const fresh = [account(CASH, 120_000, "2026-10-20")];
     const r = calculateSafeToSpend({
       accounts: fresh,
@@ -234,9 +229,18 @@ describe("calculateSafeToSpend", () => {
     });
     expect(r.inputs.recentDailySpendingPaise).toBeNull();
     expect(r.suggestedDailyPaise).toBe(10_000);
-    expect(r.expectedEndBalancePaise).toBe(0);
-    expect(r.endBalanceAssumption).toMatch(/Not enough history/);
-    expect(r.runOutInDays).toBeNull();
+    // Today's figures only: nothing about where the balance ends up.
+    expect(Object.keys(r).sort()).toEqual([
+      "daysUntilNextIncome",
+      "explanation",
+      "flexiblePaise",
+      "inputs",
+      "missing",
+      "status",
+      "suggestedDailyPaise",
+      "suggestedWeeklyPaise",
+      "warnings",
+    ]);
   });
 
   it("ignores future-dated and income activity in pace, and income raises the balance", () => {

@@ -12,7 +12,7 @@ import {
   SelectField,
 } from "@/components/forms/form-parts";
 import { Button } from "@/components/ui/button";
-import { ACCOUNT_KINDS } from "@/domain";
+import { WALLET_KINDS } from "@/domain";
 import { saveBalancesStep } from "@/lib/actions/onboarding";
 import { IDLE } from "@/lib/forms";
 import { paiseToInput } from "@/lib/format";
@@ -109,7 +109,7 @@ export function BalancesStepForm({
               defaultValue={row.kind}
               error={err[`extras.${index}.kind`]}
             >
-              {ACCOUNT_KINDS.map((kind) => (
+              {WALLET_KINDS.map((kind) => (
                 <option key={kind} value={kind}>
                   {ACCOUNT_KIND_LABELS[kind]}
                 </option>

@@ -48,6 +48,12 @@ function summaryRows(report: ParentReport, money: (paise: number) => string) {
     [`Refunds · ${count(report.refundCount, "entry", "entries")}`, money(report.refundsPaise)],
     ["Net movement", money(report.netMovementPaise), true],
   );
+  if (report.correctionCount > 0) {
+    rows.push([
+      `Corrections from balance checks · ${count(report.correctionCount, "entry", "entries")} (not income or spending)`,
+      money(report.correctionsPaise),
+    ]);
+  }
   if (report.beforeTrackingPaise !== 0) {
     rows.push([
       "Entries already in opening balances (no change to the balance)",

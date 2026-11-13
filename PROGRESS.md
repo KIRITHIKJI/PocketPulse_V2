@@ -122,6 +122,91 @@ Test infrastructure only: no file under `src/`, `supabase/` or `public/` changed
 | Full e2e | 10.1–14.8 min recorded (Design 4 runs; 39.4 min worst), 407 runs | 465 s = 7.75 min incl. build: 300 passed, 4 skipped (the designed desktop-only onboarding tests), 0 failed, 0 didn't run |
 | Lint / typecheck / build | 110 s / 65 s / 53 s ✅ | 29 s / 6 s / 25 s ✅ (no lint or build config changed; the difference is warm caches from the runs before) |
 
+### Phase 2B — forecasts removed, loans, cards, balance checks (2026-11-12/13) ✅
+
+Migration `20261112000100_v2_loans_cards_reconciliation.sql`, pushed to V2 by you on 2026-11-12.
+
+- **Spec changes (your Phase 2B prompt), written into `doc/V2_SPEC.md`:** balance checks need a
+  connection and are never queued; `record_reconciliation` works out the recorded balance and the
+  difference itself and answers `stale` with fresh figures when the client's correction doesn't
+  match; cards and loans take positive amounts, the sign is converted (unit test per kind);
+  §13 corrected (V1 is deployed on Vercel). Also corrected: the §4 Safe to Spend example's tracked
+  balance is ₹1,000, not ₹0 (1,000 − 300 − 200 + 500).
+- **Forecasts removed** (domain, UI, tests, copy): `expectedEndBalancePaise`,
+  `endBalanceAssumption`, `runOutInDays` and its warning, the goal finish date (`goalForecast`),
+  the budget rupee projection (`projectedPaise`). "Ahead of pace" is now exactly share used > share
+  elapsed, compared in integers. Survival: the run-out branch became "Recent days were above
+  today’s daily amount" (same `at_risk` status, past-tense copy); "on track" reads "Over the last
+  14 days you spent about ₹X a day, within today’s ₹Y a day". "Forecast" → "Scheduled" on recurring
+  items. `grep` finds none of the four removed names in `src`, `tests`, `e2e`.
+- **Database:** new account kinds `credit_card`, `loan_borrowed`, `loan_lent` with `counterparty`,
+  `credit_limit_paise`, `statement_day`, `due_day`; transaction types `adjustment_in` /
+  `adjustment_out` (source `reconciliation`); `reconciliations` table (owner-only RLS, explicit
+  revoke of Supabase's default grants, no delete); `wallet_balances` counts corrections;
+  `recorded_balance_at`; `record_reconciliation`. A correction can't be edited (only noted or
+  deleted), can't exist without its check (deferred constraint trigger), and deleting it reopens
+  its check (trigger). `notifications.kind` gains `card_due`. Additive; five CHECK constraints
+  re-created wider. No SECURITY DEFINER added (a DB test lists the whole schema).
+- **Domain:** `accountDelta`, `summarizePeriod` (`adjustmentsInPaise/OutPaise`, in net movement),
+  report `correctionsIn/Out/Paise` + "Corrections" line and the `reportDifferences` identity; Safe
+  to Spend leaves out money lent (`inputs.lentOutPaise`); `src/domain/accounts.ts` (sign
+  conversion, "You owe Ravi ₹600" wording, card owed / available credit, card-bill word match);
+  `src/domain/reconciliation.ts` (correction for a difference, "Find it" hints); corrections earn
+  no XP; card-due reminders under the existing "upcoming bills" setting.
+- **Mutation layer:** `src/lib/ledger/reconcile.ts`. A balance check is its own operation, outside
+  the queued `LedgerCommand` union, so neither the offline queue nor `/api/sync` can take one. Its
+  Undo is an ordinary `delete` command.
+- **Screens (functional, plainly styled; Phase 3F restyles):** `/accounts/[id]` with the balance in
+  words, card owed / available credit, Pay card bill, Repay / Borrow more, Got money back / Lend
+  more, write-off and forgiveness behind a dialog naming the amount and what it counts as, Check
+  balance (Compare → matches / Find it with hints and a history link / one correction with Undo),
+  check history and recent entries. Wallets links to it and words card/loan balances; the account
+  form has the new kinds and fields. Loans are left out of the quick-add, expense and plan wallet
+  pickers (kept in transfers). Card-bill nudge in the full form. Corrections line in the report
+  preview, PDF and text; correction rows in the detail CSV; `reconciliations` in the data export;
+  correction types in the history filter; corrections can't be opened in the edit form.
+  Onboarding still offers only the five wallet kinds.
+- **Tests added:** unit `tests/unit/domain/loans-cards-reconciliation.test.ts`,
+  `tests/unit/domain/card-reminders.test.ts`, `tests/unit/reconcile.test.ts`; DB
+  `tests/db/loans-cards-reconciliation.test.ts` and the extended equivalence test in
+  `tests/db/wallet-balances.test.ts` (written before any formula changed); e2e
+  `e2e/accounts.spec.ts` on its own V2 test account (`pp-e2e-accounts-desktop`, made by
+  `npm run e2e:accounts`), 3 of its 5 tests `@smoke`.
+- **Existing tests changed:** only assertions on removed fields (end balance, run-out, goal
+  forecast, budget projection), the "Forecast" → "Scheduled" label, and `reconciliations` added to
+  the two exhaustive table lists in `rls.test.ts` and `account-deletion.test.ts`.
+- **Sizes:** `scripts/route-js.mjs` (the Phase 1 method, KB of 1,024). Run on the pre-phase commit
+  it reproduces the Phase 1 table exactly. Largest change +2 KB gzip (`/accounts`,
+  `/transactions/[id]/edit`); the new `/accounts/[id]` is 807 / 252.
+- **Money check:** the old build (`cb1b606`) and the new one side by side on 8 V2 test accounts,
+  every `.money` figure and `data-paise` on 16 screens and the goal pages: identical except the
+  removed "Expected balance before next income" row. Plus the old vs the new domain on a generated
+  V1-shaped ledger (about 400 entries with refunds, transfers, goals, budgets, bills, recurring, a
+  late wallet and an entry before an opening date): Safe to Spend ×24, Survival ×72 (0 status
+  changes), budgets ×12, goals ×12, reports + CSV + text ×15, insights ×15, balances: identical
+  except the removed fields.
+
+**Checks (final code, once each, this machine):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 26 s |
+| `npm run typecheck` | ✅ | 18 s |
+| `npm test` | ✅ 39 files / 955 tests (was 36 / 918) | 16 s |
+| `npm run test:db` (local PostgreSQL 18) | ✅ 15 files, 144 passed + 14 placeholders (was 129 + 13) | 37 s |
+| `npm run build` | ✅ 42 pages | 40 s |
+| `npm run test:smoke` | ✅ 49 passed (was 45) | 187 s incl. build |
+| `npm run test:e2e` (full) | ✅ 306 passed, 4 skipped (the designed desktop-only onboarding tests), 0 failed, 0 did not run | 397 s = 6.6 min incl. build |
+
+**Open / known:**
+- The money test accounts are emptied by every e2e run, so the screen-level money check covers
+  Home, Wallets, Reports, Rewards and Safe to Spend only; budgets, goals, Survival and Insights are
+  covered by the domain-level check.
+- Card-due reminders appear only while the app is open (like every reminder).
+- "Find it" hints are deterministic pointers only (an entry of the same amount on another account,
+  a same-day duplicate, entries before the opening date, a transfer of half the difference).
+- A write-off goes to the Other category (no "Written off" subcategory exists; none was added).
+
 ### Checklist for Phases 2–6
 
 **Phase 2A — faster tests (test infrastructure only)**
@@ -135,21 +220,20 @@ Test infrastructure only: no file under `src/`, `supabase/` or `public/` changed
 - [x] `@smoke` tag on the ~20 tests in `doc/V2_SPEC.md` §10; `npm run test:smoke`
 - [x] Full e2e under 15 min (target 6–9), measured; smoke measured
 - [x] Pure unit tests in the `node` environment
-- [ ] `scripts/route-js.mjs` for first-load JS (not done: the measuring script is still only in the
-      Phase 1 scratchpad; move it into the repo in 2B, when sizes are next reported)
+- [x] `scripts/route-js.mjs` for first-load JS (done in 2B)
 
 **Phase 2B — forecast removal, loans, credit cards, reconciliation**
-- [ ] Remove expected end balance, run-out warning, survival run-out branch, goal finish date,
+- [x] Remove expected end balance, run-out warning, survival run-out branch, goal finish date,
       budget rupee projection; Survival "on track" about the past; "Forecast" → "Scheduled"
-- [ ] Safe to Spend base without money lent out + unit test (D1)
-- [ ] Report "Corrections" line + reconciliation identity tests (D9)
-- [ ] Migration (`doc/V2_SPEC.md` §5) + DB tests (RLS, RPC idempotency, `wallet_balances` = domain
-      incl. adjustments); you push it to V2
-- [ ] Domain: new kinds/types, `accountDelta`, `summarizePeriod`, report, CSV, export
-- [ ] Mutation layer + offline queue: `reconcile` command
-- [ ] `/accounts/[id]`: Check balance (find it / correction with Undo), Pay card bill, loan actions
-- [ ] Smoke additions: card purchase + bill, loan borrow + repay, correction + Undo
-- [ ] Full e2e suite once, clean
+- [x] Safe to Spend base without money lent out + unit test (D1)
+- [x] Report "Corrections" line + reconciliation identity tests (D9)
+- [x] Migration (`doc/V2_SPEC.md` §5) + DB tests (RLS, RPC idempotency, `wallet_balances` = domain
+      incl. adjustments); you pushed it to V2
+- [x] Domain: new kinds/types, `accountDelta`, `summarizePeriod`, report, CSV, export
+- [x] Mutation layer: a balance check operation that is never queued (changed from "offline queue")
+- [x] `/accounts/[id]`: Check balance (find it / correction with Undo), Pay card bill, loan actions
+- [x] Smoke additions: card purchase + bill, loan borrow + repay, correction + Undo
+- [x] Full e2e suite once, clean
 
 **Phase 3 — redesign (prompts 3A–3F)**
 - [ ] 3A tokens, primitives, 8-link sidebar, Add sheet, hubs, mobile bar

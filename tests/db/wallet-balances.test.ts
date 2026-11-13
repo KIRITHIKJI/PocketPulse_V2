@@ -20,6 +20,10 @@ import { A, A_BANK, A_CASH, A_GOAL, B, B_CASH, type Fixtures, seedFixtures, tid 
 import { ADMIN_URL, type Session, type TestDb, as, createTestDb } from "./harness";
 
 const A_LATE = "aaaaaaaa-0000-4000-8000-0000000000e1";
+const A_CARD = "aaaaaaaa-0000-4000-8000-0000000000e2";
+const A_OWE = "aaaaaaaa-0000-4000-8000-0000000000e3";
+const A_LENT = "aaaaaaaa-0000-4000-8000-0000000000e4";
+const A_MOVED = "aaaaaaaa-0000-4000-8000-0000000000e5";
 const IST = "Asia/Kolkata";
 const ms = (iso: string) => Date.parse(iso);
 
@@ -154,6 +158,89 @@ describe.skipIf(!ADMIN_URL)("wallet_balances matches the domain", () => {
     await expense(17, 12_345, "2026-12-31T23:59:59.999+05:30", A_BANK);
   }
 
+  /**
+   * A credit card, money borrowed and lent, and balance corrections in both directions: one at
+   * the last millisecond before IST midnight, one undone, one before its account's opening date.
+   */
+  async function writeV2Ledger(s: Session) {
+    await s.q(
+      `insert into public.accounts (id, name, kind, currency, opening_balance_paise, opening_balance_date, counterparty, credit_limit_paise)
+       values ($1, 'Card', 'credit_card', 'INR', -50000, '2026-10-01', null, 1000000),
+              ($2, 'Ravi', 'loan_borrowed', 'INR', 0, '2026-10-01', 'Ravi', null),
+              ($3, 'Priya', 'loan_lent', 'INR', 0, '2026-10-01', 'Priya', null),
+              ($4, 'Moved', 'bank', 'INR', 7000, '2026-10-01', null, null)`,
+      [A_CARD, A_OWE, A_LENT, A_MOVED],
+    );
+    const create = async (n: number, tx: Record<string, unknown>) => {
+      const result = await s.rpc<{ status: string }>("create_transaction", [
+        { id: tid(n), currency: "INR", ...tx },
+      ]);
+      expect(result.status).toBe("applied");
+    };
+    const transfer = (n: number, amount: number, at: string, from: string, to: string) =>
+      create(n, {
+        type: "transfer",
+        amount_paise: amount,
+        occurred_at: at,
+        from_account_id: from,
+        to_account_id: to,
+      });
+    // Card purchase, then the bill paid from the bank.
+    await create(101, {
+      type: "expense",
+      amount_paise: 50_000,
+      occurred_at: "2026-10-03T10:00:00+05:30",
+      account_id: A_CARD,
+      category_id: f.aFood,
+    });
+    await transfer(102, 50_000, "2026-10-08T10:00:00+05:30", A_BANK, A_CARD);
+    // Borrowed, repaid part, the rest partly forgiven.
+    await transfer(103, 100_000, "2026-10-04T10:00:00+05:30", A_OWE, A_CASH);
+    await transfer(104, 40_000, "2026-10-12T10:00:00+05:30", A_CASH, A_OWE);
+    await create(105, {
+      type: "income",
+      amount_paise: 10_000,
+      occurred_at: "2026-10-21T10:00:00+05:30",
+      account_id: A_OWE,
+    });
+    // Lent, part came back, part written off.
+    await transfer(106, 50_000, "2026-10-06T10:00:00+05:30", A_CASH, A_LENT);
+    await transfer(107, 20_000, "2026-10-13T10:00:00+05:30", A_LENT, A_CASH);
+    await create(108, {
+      type: "expense",
+      amount_paise: 10_000,
+      occurred_at: "2026-10-20T10:00:00+05:30",
+      account_id: A_LENT,
+    });
+    // Balance checks: the server works out the recorded balance; the correction must match it.
+    const reconcile = async (n: number, account: string, asOf: string, delta: number) => {
+      const wallets = await s.rpc<{ accounts: { account_id: string; closing_paise: string }[] }>(
+        "wallet_balances",
+        [asOf, null],
+      );
+      const recorded = Number(
+        wallets.accounts.find((w) => w.account_id === account)!.closing_paise,
+      );
+      const result = await s.rpc<{ status: string }>("record_reconciliation", [
+        { id: tid(n), account_id: account, as_of: asOf, stated_balance_paise: recorded + delta },
+        {
+          id: tid(n + 1),
+          type: delta > 0 ? "adjustment_in" : "adjustment_out",
+          amount_paise: Math.abs(delta),
+        },
+      ]);
+      expect(result.status).toBe("applied");
+    };
+    await reconcile(110, A_CASH, "2026-10-09T23:59:59.999+05:30", 4_000);
+    await reconcile(112, A_BANK, "2026-10-15T00:00:00+05:30", -2_500);
+    await reconcile(114, A_CARD, "2026-10-16T12:00:00+05:30", 9_900);
+    await s.rpc("set_transaction_deleted", [tid(115), true]);
+    await reconcile(116, A_MOVED, "2026-10-03T12:00:00+05:30", 1_500);
+    await s.q("update public.accounts set opening_balance_date = '2026-10-05' where id = $1", [
+      A_MOVED,
+    ]);
+  }
+
   async function read(s: Session): Promise<{ accounts: Account[]; ledger: Transaction[] }> {
     const accounts = (await s.q("select * from public.accounts")).rows.map(rowToAccount);
     // Deleted rows included on purpose: the domain must leave them out by itself.
@@ -241,6 +328,43 @@ describe.skipIf(!ADMIN_URL)("wallet_balances matches the domain", () => {
     });
   });
 
+  it("agrees with the domain on cards, loans and balance corrections too", async () => {
+    await as(db, A, async (s) => {
+      await writeLedger(s);
+      await writeV2Ledger(s);
+      const { ledger } = await read(s);
+      for (const type of ["adjustment_in", "adjustment_out"]) {
+        expect(ledger.some((tx) => tx.type === type && tx.deletedAt === null)).toBe(true);
+      }
+      expect(ledger.some((tx) => tx.type === "adjustment_in" && tx.deletedAt !== null)).toBe(true);
+      await expectSameAt(s, IST);
+
+      // By hand: the card owes 500 at the start, buys 500, the bank pays 500 off.
+      const at = async (iso: string) => (await rpc(s, iso, null)).closing;
+      const of = (balance: ConsolidatedBalance, id: string) =>
+        balance.accounts.find((b) => b.accountId === id)!.balancePaise;
+      const nov = await at("2026-11-01T00:00:00+05:30");
+      expect(of(nov, A_CARD)).toBe(-50_000);
+      // Borrowed 1,000, repaid 400, then 100 forgiven (income on the loan).
+      expect(of(nov, A_OWE)).toBe(-100_000 + 40_000 + 10_000);
+      // Lent 500, 200 came back, 100 written off (an expense on the loan).
+      expect(of(nov, A_LENT)).toBe(50_000 - 20_000 - 10_000);
+      // The 40 correction lands exactly at its instant: not before, then from it on.
+      const cash = (balance: ConsolidatedBalance) => of(balance, A_CASH)!;
+      expect(
+        cash(await at("2026-10-10T00:00:00+05:30")) -
+          cash(await at("2026-10-09T23:59:59.999+05:30")),
+      ).toBe(4_000 - 30_000);
+      // A correction dated before its account's opening date is already inside the opening.
+      const before = (await rpc(s, "2026-11-01T00:00:00+05:30", null)).entriesBeforeOpening;
+      expect(before.get(A_MOVED)).toBe(1);
+      expect(of(nov, A_MOVED)).toBe(7_000);
+
+      await s.q("update public.profiles set time_zone = 'America/New_York' where id = $1", [A]);
+      await expectSameAt(s, "America/New_York");
+    });
+  });
+
   it("gives summarizePeriod the same opening and closing as the full ledger", async () => {
     await as(db, A, async (s) => {
       await writeLedger(s);
@@ -273,6 +397,46 @@ describe.skipIf(!ADMIN_URL)("wallet_balances matches the domain", () => {
           period.startDate ?? "all time",
         ).toEqual(summarizePeriod(accounts, ledger, period, now, IST));
       }
+    });
+  });
+
+  it("gives summarizePeriod the same figures with cards, loans and corrections", async () => {
+    await as(db, A, async (s) => {
+      await writeLedger(s);
+      await writeV2Ledger(s);
+      const { accounts, ledger } = await read(s);
+      const now = ms("2026-10-25T15:00:00+05:30");
+      const settings = { timeZone: IST, weekStartsOn: 1 as const };
+      for (const period of [
+        resolvePeriod({ kind: "this_month" }, now, settings),
+        resolvePeriod({ kind: "custom", from: "2026-10-10", to: "2026-10-20" }, now, settings),
+        resolvePeriod({ kind: "all_time" }, now, settings),
+      ]) {
+        const { openingMs, closingMs } = periodBalanceInstants(period, now);
+        const balances = rowToLedgerBalances(
+          await s.rpc("wallet_balances", [
+            new Date(closingMs).toISOString(),
+            openingMs === null ? null : new Date(openingMs).toISOString(),
+          ]),
+          closingMs,
+          openingMs,
+        );
+        const fromDb = summarizePeriod(accounts, ledger, period, now, IST, balances);
+        expect(fromDb, period.startDate ?? "all time").toEqual(
+          summarizePeriod(accounts, ledger, period, now, IST),
+        );
+      }
+      const october = summarizePeriod(
+        accounts,
+        ledger,
+        resolvePeriod({ kind: "this_month" }, now, settings),
+        now,
+        IST,
+      );
+      // 4,000 in on Cash; the bank's 2,500 out; the undone one and the one before Moved's
+      // opening date don't count.
+      expect(october.adjustmentsInPaise).toBe(4_000);
+      expect(october.adjustmentsOutPaise).toBe(2_500);
     });
   });
 });

@@ -3,9 +3,11 @@
  * figure — today's or a historical month-end — is opening balance + dated ledger activity up to
  * an explicit instant, and every result says which instant (`asOfMs`) and scope it describes.
  *
- * Per account:   opening + income + refunds + transfers in − expenses − transfers out
- * Consolidated:  Σ account balances = opening total + income + refunds − expenses
- *                (transfers cancel out; allocations never move money).
+ * Per account:   opening + income + refunds + transfers in + corrections in
+ *                − expenses − transfers out − corrections out
+ * Consolidated:  Σ account balances = opening total + income + refunds − expenses ± corrections
+ *                (transfers cancel out; allocations never move money). Cards and loans are
+ *                accounts like any other, so this is the net position.
  */
 import { addPaise, sumPaise, type Paise } from "./money";
 import { isActive, occurredAtMs } from "./ledger";
@@ -18,8 +20,10 @@ export function accountDelta(tx: Transaction, accountId: string): Paise {
   switch (tx.type) {
     case "income":
     case "refund":
+    case "adjustment_in":
       return tx.accountId === accountId ? tx.amountPaise : 0;
     case "expense":
+    case "adjustment_out":
       return tx.accountId === accountId ? -tx.amountPaise : 0;
     case "transfer":
       if (tx.fromAccountId === accountId) return -tx.amountPaise;
@@ -181,7 +185,13 @@ export interface PeriodSummary {
   refundsPaise: Paise;
   /** expenses − refunds. */
   netSpendingPaise: Paise;
-  /** income + refunds − expenses. Equals closing − opening − newlyTrackedOpeningPaise. */
+  /** Balance corrections; never income or spending. */
+  adjustmentsInPaise: Paise;
+  adjustmentsOutPaise: Paise;
+  /**
+   * income + refunds − expenses + corrections in − corrections out.
+   * Equals closing − opening − newlyTrackedOpeningPaise.
+   */
   netMovementPaise: Paise;
   /** Opening balances of accounts whose tracking started inside the period. */
   newlyTrackedOpeningPaise: Paise;
@@ -248,6 +258,8 @@ export function summarizePeriod(
   let income = 0;
   let expenses = 0;
   let refunds = 0;
+  let adjustmentsIn = 0;
+  let adjustmentsOut = 0;
   let transferred = 0;
   let allocated = 0;
   let released = 0;
@@ -282,6 +294,14 @@ export function summarizePeriod(
         released = addPaise(released, tx.amountPaise);
         counts.allocation++;
         break;
+      case "adjustment_in":
+        if (!tracked(tx, tx.accountId)) break;
+        adjustmentsIn = addPaise(adjustmentsIn, tx.amountPaise);
+        break;
+      case "adjustment_out":
+        if (!tracked(tx, tx.accountId)) break;
+        adjustmentsOut = addPaise(adjustmentsOut, tx.amountPaise);
+        break;
     }
   }
 
@@ -296,7 +316,9 @@ export function summarizePeriod(
     expensesPaise: expenses,
     refundsPaise: refunds,
     netSpendingPaise: expenses - refunds,
-    netMovementPaise: income + refunds - expenses,
+    adjustmentsInPaise: adjustmentsIn,
+    adjustmentsOutPaise: adjustmentsOut,
+    netMovementPaise: income + refunds - expenses + adjustmentsIn - adjustmentsOut,
     newlyTrackedOpeningPaise: newlyTracked,
     transferredPaise: transferred,
     allocatedPaise: allocated,

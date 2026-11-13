@@ -7,7 +7,7 @@
 import { budgetAlert, evaluateBudget } from "./budgets";
 import { formatBasisPoints, type Paise } from "./money";
 import { loggedDays } from "./rewards";
-import type { Transaction } from "./schemas";
+import type { Account, Transaction } from "./schemas";
 import type { Budget, Commitment, RecurringTemplate, SavingsGoal } from "./plan-schemas";
 import { forecastCommitments } from "./recurring";
 import { unpaidCommitmentsDue } from "./safe-to-spend";
@@ -16,6 +16,7 @@ import {
   type LocalDate,
   type TimeSettings,
   addDays,
+  addMonths,
   daysBetween,
   toLocalDate,
   toLocalTime,
@@ -49,7 +50,8 @@ type ReminderKind =
   | "upcoming_income"
   | "budget_threshold"
   | "upcoming_commitment"
-  | "savings_review";
+  | "savings_review"
+  | "card_due";
 
 interface DueReminder {
   kind: ReminderKind;
@@ -67,10 +69,18 @@ interface ReminderInput {
   templates: readonly RecurringTemplate[];
   goals: readonly SavingsGoal[];
   nextIncomeDate: LocalDate | null;
+  /** Credit cards with a due day, and what's owed on each now (from the balances). */
+  cards?: readonly { account: Account; owedPaise: Paise }[];
   now: Instant;
   settings: TimeSettings;
   money: (paise: Paise) => string;
   dateText: (date: LocalDate) => string;
+}
+
+/** The next date on or after `today` that falls on day `day` (1–28) of a month. */
+function nextDayOfMonth(today: LocalDate, day: number): LocalDate {
+  const thisMonth = `${today.slice(0, 8)}${String(day).padStart(2, "0")}`;
+  return thisMonth >= today ? thisMonth : addMonths(thisMonth, 1);
 }
 
 export function dueReminders(input: ReminderInput): DueReminder[] {
@@ -154,6 +164,23 @@ export function dueReminders(input: ReminderInput): DueReminder[] {
         body: `${money(bill.amountPaise)} due ${dateText(bill.dueDate)}.`,
         linkPath: "/recurring",
         dedupeKey: `bill:${bill.id}:${bill.dueDate}`,
+      });
+    }
+  }
+
+  // A card's bill is a reminder only, never a bill in Safe to Spend: its purchases are already
+  // in the balance. It follows the "upcoming bills" setting and its look-ahead.
+  if (prefs.upcomingCommitments) {
+    for (const { account, owedPaise } of input.cards ?? []) {
+      if (account.dueDay === null || owedPaise <= 0 || account.archivedAt) continue;
+      const dueDate = nextDayOfMonth(today, account.dueDay);
+      if (daysBetween(today, dueDate) > prefs.upcomingCommitmentDays) continue;
+      due.push({
+        kind: "card_due",
+        title: `${account.name} payment is due`,
+        body: `${money(owedPaise)} owed on the card, due ${dateText(dueDate)}. Pay it as a transfer to the card.`,
+        linkPath: `/accounts/${account.id}`,
+        dedupeKey: `card:${account.id}:${dueDate}`,
       });
     }
   }

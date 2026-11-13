@@ -174,7 +174,7 @@ export function RecurringTemplateCard({
           }
           title={`Archive ${t.title}?`}
           description={
-            <p>It stops being forecast. Entries it already created stay in your history.</p>
+            <p>It stops being scheduled. Entries it already created stay in your history.</p>
           }
           confirmLabel="Archive"
           pendingLabel="Archiving…"

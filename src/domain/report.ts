@@ -8,6 +8,9 @@
  * doesn't move the balance. The report keeps the Insights figures and shows that difference as its
  * own line (`beforeTrackingPaise`), so the sums still add up on the page.
  *
+ * Balance corrections (from balance checks) are never income or spending, so they get their own
+ * "Corrections" line: opening + income + refunds − spending ± corrections = closing.
+ *
  * Hiding a category removes its row and its entries from what's shared, never from the totals:
  * they gather in one "Other categories" row, because a total that changed with a filter wouldn't
  * reconcile with the ledger.
@@ -24,7 +27,7 @@ import { categoryLabel, resolveCategoryChoice } from "./category-tree";
 import { indexById, occurredAtMs, refundCategory } from "./ledger";
 import { type Paise, addPaise, subtractPaise, sumPaise } from "./money";
 import type { CurrencyCode } from "./money";
-import type { Account, Category, Transaction } from "./schemas";
+import { type Account, type Category, type Transaction, isAdjustment } from "./schemas";
 import { type Instant, type LocalDate, type TimeSettings, toLocalDate, toLocalTime } from "./time";
 import { type Period } from "./periods";
 
@@ -50,12 +53,12 @@ export interface ReportTransactionRow {
   id: string;
   date: LocalDate;
   time: string;
-  type: "income" | "expense" | "refund" | "transfer";
+  type: "income" | "expense" | "refund" | "transfer" | "correction";
   description: string;
   category: string;
   wallet: string;
   amountPaise: Paise;
-  /** + money in, − money out, 0 moved between own wallets. */
+  /** + money in, − money out, 0 moved between own wallets. A correction is ± its direction. */
   signedPaise: Paise;
   note: string | null;
 }
@@ -92,6 +95,11 @@ export interface ParentReport {
   netSpendingPaise: Paise;
   /** income + refunds − expenses. */
   netMovementPaise: Paise;
+  /** Balance corrections in the period, never income or spending: in, out, and in − out. */
+  correctionsInPaise: Paise;
+  correctionsOutPaise: Paise;
+  correctionsPaise: Paise;
+  correctionCount: number;
   /** Entries dated before their wallet's opening date: already in the opening balance. */
   beforeTrackingPaise: Paise;
   transferredPaise: Paise;
@@ -110,7 +118,11 @@ export const REPORT_DEFINITIONS: readonly (readonly [string, string])[] = [
   ["Expenses", "What was spent, before refunds."],
   ["Refunds", "Money returned for earlier purchases. It reduces spending."],
   ["Net movement", "Income plus refunds, minus expenses."],
-  ["Closing balance", "Opening balance plus net movement."],
+  [
+    "Corrections",
+    "Balance checks that found a difference with the real balance. Never income or spending.",
+  ],
+  ["Closing balance", "Opening balance plus net movement and any corrections."],
   ["Tracked balance", "Only what was recorded in PocketPulse. It isn’t verified by any bank."],
 ];
 
@@ -177,6 +189,22 @@ function transactionRows(
   for (const tx of transactionsInPeriod(ledger, period)) {
     // Moves into and out of savings goals aren't money coming in or going out.
     if (tx.type === "allocation" || tx.type === "allocation_release") continue;
+    if (isAdjustment(tx)) {
+      const at = occurredAtMs(tx);
+      rows.push({
+        id: tx.id,
+        date: toLocalDate(at, context.timeZone),
+        time: toLocalTime(at, context.timeZone),
+        type: "correction",
+        description: tx.description || "Balance correction",
+        category: "",
+        wallet: wallet(tx.accountId),
+        amountPaise: tx.amountPaise,
+        signedPaise: tx.type === "adjustment_in" ? tx.amountPaise : -tx.amountPaise,
+        note: context.includeNotes ? tx.note : null,
+      });
+      continue;
+    }
     const choice =
       tx.type === "refund" ? refundCategory(tx, byId) : tx.type === "transfer" ? null : tx;
     const resolved = choice ? resolveCategoryChoice(choice, context.categories) : null;
@@ -239,6 +267,12 @@ export function buildReport(input: ReportInput): ParentReport {
     addPaise(incomePaise, breakdown.refundsPaise),
     breakdown.grossPaise,
   );
+  const corrections = transactionsInPeriod(ledger, period).filter(isAdjustment);
+  const correctionsOf = (type: Transaction["type"]) =>
+    sumPaise(corrections.filter((tx) => tx.type === type).map((tx) => tx.amountPaise));
+  const correctionsInPaise = correctionsOf("adjustment_in");
+  const correctionsOutPaise = correctionsOf("adjustment_out");
+  const correctionsPaise = subtractPaise(correctionsInPaise, correctionsOutPaise);
   const { rows, hiddenRow } = categoryRows(breakdown, categoriesById, hidden);
 
   let comparison: ReportComparison | null = null;
@@ -280,7 +314,14 @@ export function buildReport(input: ReportInput): ParentReport {
     refundCount: breakdown.categories.reduce((n, c) => n + c.refundCount, 0),
     netSpendingPaise: breakdown.netPaise,
     netMovementPaise,
-    beforeTrackingPaise: subtractPaise(netMovementPaise, summary.netMovementPaise),
+    correctionsInPaise,
+    correctionsOutPaise,
+    correctionsPaise,
+    correctionCount: corrections.length,
+    beforeTrackingPaise: subtractPaise(
+      addPaise(netMovementPaise, correctionsPaise),
+      summary.netMovementPaise,
+    ),
     transferredPaise: summary.transferredPaise,
     setAsidePaise: summary.allocatedPaise,
     releasedPaise: summary.releasedPaise,
@@ -304,7 +345,13 @@ export function reportDifferences(report: ParentReport) {
     balance: subtractPaise(
       report.closingPaise,
       subtractPaise(
-        addPaise(addPaise(report.openingPaise, report.newlyTrackedPaise), report.netMovementPaise),
+        addPaise(
+          addPaise(
+            addPaise(report.openingPaise, report.newlyTrackedPaise),
+            report.netMovementPaise,
+          ),
+          report.correctionsPaise,
+        ),
         report.beforeTrackingPaise,
       ),
     ),

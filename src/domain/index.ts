@@ -1,6 +1,6 @@
 /**
  * PocketPulse financial domain layer. Pure, framework-independent functions: no React, no
- * Next.js, no database. Every screen, chart, budget, goal, forecast and report uses these —
+ * Next.js, no database. Every screen, chart, budget, goal, plan and report uses these —
  * never reimplement money math in components.
  */
 export * from "./money";
@@ -31,3 +31,5 @@ export * from "./report";
 export * from "./report-export";
 export * from "./rewards";
 export * from "./reminders";
+export * from "./accounts";
+export * from "./reconciliation";

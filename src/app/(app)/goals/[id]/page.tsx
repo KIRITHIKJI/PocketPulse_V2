@@ -16,13 +16,7 @@ import { StatePanel } from "@/components/states/state-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Surface, SurfaceHeader } from "@/components/ui/surface";
-import {
-  type ContributionCadence,
-  formatBasisPoints,
-  goalForecast,
-  goalMoves,
-  goalProgress,
-} from "@/domain";
+import { type ContributionCadence, formatBasisPoints, goalMoves, goalProgress } from "@/domain";
 import { loadEntryKit } from "@/lib/data/entry-kit";
 import { loadPlan } from "@/lib/data/plan";
 import { getGoal, getGoalLedgerVersions, getGoals, getSpendingLedger } from "@/lib/data/queries";
@@ -50,12 +44,11 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
     getGoalLedgerVersions(),
   ]);
   if (!goal) notFound();
-  const { profile, ledger, today, now, money, result } = plan;
+  const { profile, ledger, today, money, result } = plan;
   const cadence: ContributionCadence = ["weekly", "biweekly"].includes(profile.incomeFrequency)
     ? "weekly"
     : "monthly";
   const progress = goalProgress(goal, ledger, today, cadence, money);
-  const forecast = goalForecast(goal, ledger, now, profile.timeZone);
   const moves = goalMoves(goal.id, ledger);
   const live = goal.status === "active" || goal.status === "paused";
   const done = goal.status === "completed";
@@ -135,18 +128,6 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
               value={progress.suggested ? money(progress.suggested.amountPaise) : "—"}
               explanation={progress.explanation}
             />
-            {forecast && (
-              <FigureRow
-                label="At your pace so far"
-                value={formatLocalDate(forecast.reachedOn)}
-                explanation={
-                  <>
-                    About <span className="money">{money(forecast.dailyPacePaise)}</span> a day
-                    since your first allocation. An estimate, not a promise.
-                  </>
-                }
-              />
-            )}
           </dl>
           <div className="flex flex-wrap gap-2 border-t pt-4">
             {goal.status === "active" && (

@@ -261,7 +261,7 @@ describe("what's due", () => {
       counted: true,
     });
     const named = new Map(items.map((i) => [i.title, i]));
-    expect(named.get("Rent")).toMatchObject({ label: "Forecast", counted: false });
+    expect(named.get("Rent")).toMatchObject({ label: "Scheduled", counted: false });
     expect(named.get("Mess")).toMatchObject({ label: "Reminder" });
     expect(named.get("Allowance")).toMatchObject({ kind: "income", counted: false });
   });

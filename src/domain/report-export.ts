@@ -10,6 +10,7 @@ export const REPORT_TYPE_LABELS = {
   expense: "Expense",
   refund: "Refund",
   transfer: "Transfer",
+  correction: "Balance correction",
 } as const;
 
 export const hiddenRowLabel = () => OTHER_CATEGORIES;
@@ -114,6 +115,11 @@ export function reportText(
     `Refunds: ${money(report.refundsPaise)}`,
     `Net movement: ${money(report.netMovementPaise)}`,
   );
+  if (report.correctionCount > 0) {
+    lines.push(
+      `Corrections from balance checks: ${money(report.correctionsPaise)} (not income or spending)`,
+    );
+  }
   if (report.beforeTrackingPaise !== 0) {
     lines.push(`Entries already in opening balances: ${money(report.beforeTrackingPaise)}`);
   }

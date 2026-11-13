@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { dueReminders, moneyFormatter } from "@/domain";
+import { cardFigures, dueReminders, moneyFormatter } from "@/domain";
 import { dbErrorMessage } from "@/lib/data/errors";
 import {
+  getAccounts,
   getActiveGoals,
   getBudgets,
   getCommitments,
@@ -13,8 +14,10 @@ import {
   getProfile,
   getRecurringTemplates,
   getReminderSettings,
+  getWalletBalances,
 } from "@/lib/data/queries";
 import { requestNow, requireSession } from "@/lib/data/session";
+import { isoInstant } from "@/lib/data/slices";
 import { formatLocalDate } from "@/lib/format";
 import { type FormState, invalid, text } from "@/lib/forms";
 import { reminderScheduleSchema } from "@/lib/validation/settings";
@@ -33,15 +36,30 @@ interface NewReminder {
 export async function syncReminders(): Promise<NewReminder[]> {
   try {
     const { supabase, userId } = await requireSession();
-    const [prefs, profile, ledger, budgets, commitments, templates, goals] = await Promise.all([
-      getReminderSettings(),
-      getProfile(),
-      getLedger(),
-      getBudgets(),
-      getCommitments(),
-      getRecurringTemplates(),
-      getActiveGoals(),
-    ]);
+    const now = requestNow();
+    const [prefs, profile, ledger, budgets, commitments, templates, goals, accounts] =
+      await Promise.all([
+        getReminderSettings(),
+        getProfile(),
+        getLedger(),
+        getBudgets(),
+        getCommitments(),
+        getRecurringTemplates(),
+        getActiveGoals(),
+        getAccounts(),
+      ]);
+    const cardAccounts = accounts.filter((a) => a.kind === "credit_card" && a.dueDay !== null);
+    // Only someone with a card due day pays for the balance read.
+    const balances = cardAccounts.length
+      ? (await getWalletBalances(isoInstant(now))).closing
+      : null;
+    const cards = cardAccounts.map((account) => ({
+      account,
+      owedPaise: cardFigures(
+        account,
+        balances?.accounts.find((b) => b.accountId === account.id)?.balancePaise ?? 0,
+      ).owedPaise,
+    }));
     const due = dueReminders({
       prefs,
       ledger,
@@ -50,7 +68,8 @@ export async function syncReminders(): Promise<NewReminder[]> {
       templates,
       goals,
       nextIncomeDate: profile.nextIncomeDate,
-      now: requestNow(),
+      cards,
+      now,
       settings: { timeZone: profile.timeZone, weekStartsOn: profile.weekStartsOn },
       money: moneyFormatter(profile.currency),
       dateText: formatLocalDate,
