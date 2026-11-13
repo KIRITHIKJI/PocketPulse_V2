@@ -174,6 +174,18 @@ test.describe("with OS reduced motion", () => {
   });
 });
 
+test("Home shows the level once: in the sidebar on laptops, in the progress strip on phones", async ({
+  page,
+  isMobile,
+}) => {
+  await page.goto("/home");
+  const strip = page.locator("#main").getByTestId("player-chip");
+  await expect(strip).toHaveAttribute("href", "/rewards/status");
+  await expect(page.getByText(/^Level \d+$/).filter({ visible: true })).toHaveCount(1);
+  const where = isMobile ? strip : page.getByTestId("sidebar-player-chip");
+  await expect(where.getByText(/^Level \d+$/)).toBeVisible();
+});
+
 test("offline banner reflects connectivity", async ({ page, context }) => {
   await page.goto("/home");
   await context.setOffline(true);

@@ -1,54 +1,60 @@
 import Link from "next/link";
 
-import { PlayerChipView } from "@/components/home/player-chip-view";
-import { Surface } from "@/components/ui/surface";
+import { PlayerChipView, ProgressStripView } from "@/components/home/player-chip-view";
+import { Panel } from "@/components/layout/primitives";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPlayerStatus } from "@/lib/rewards/status";
+import { getPlayerStatus, getTodayMission } from "@/lib/rewards/status";
 
 /**
- * Home's compact progress: rank, level, XP to the next level and the streak. It opens Player
- * status (`/rewards/status`). Streamed after the money figures, and never larger than them.
+ * Home's progression strip: level (phones only; the sidebar shows it on laptops), streak and
+ * today's mission. It opens Player status (`/rewards/status`). Streamed after the money figures,
+ * and never larger than them.
  */
 export async function PlayerChip() {
   let status;
+  let mission;
   try {
-    status = await getPlayerStatus();
+    [status, mission] = await Promise.all([
+      getPlayerStatus(),
+      // The mission is a nicety: without it the strip still shows the level and streak.
+      getTodayMission().catch(() => null),
+    ]);
   } catch {
     // Progress is secondary: a failed read leaves a quiet link instead of breaking Home.
     return (
-      <Surface variant="interactive" asChild>
+      <Panel asChild>
         <Link href="/rewards/status" data-testid="player-chip" data-state="error">
           <span className="type-body text-muted-foreground">
             Your progress couldn’t load. Open Player status.
           </span>
         </Link>
-      </Surface>
+      </Panel>
     );
   }
 
-  return <PlayerChipView initial={status} />;
+  return <ProgressStripView initial={status} mission={mission} />;
 }
 
 export function PlayerChipSkeleton() {
   return (
-    <Surface aria-busy="true" className="gap-3" data-testid="player-chip-loading">
+    <Panel
+      aria-busy="true"
+      className="flex-row items-center gap-3 py-3"
+      data-testid="player-chip-loading"
+    >
       <span className="sr-only">Loading your progress…</span>
-      <div className="flex items-center gap-3" aria-hidden="true">
-        <Skeleton className="size-10 rounded-xl" />
-        <div className="flex flex-1 flex-col gap-1.5">
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-3 w-24" />
-        </div>
+      <div className="flex flex-1 flex-col gap-1.5" aria-hidden="true">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-3 w-32" />
       </div>
-      <Skeleton className="h-2 w-full rounded-full" />
-    </Surface>
+    </Panel>
   );
 }
 
 /** The sidebar's compact chip. Streamed after the page; a failed read just leaves it out. */
 export async function SidebarPlayerChip() {
   const status = await getPlayerStatus().catch(() => null);
-  return status ? <PlayerChipView initial={status} compact /> : null;
+  return status ? <PlayerChipView initial={status} /> : null;
 }
 
 export function SidebarPlayerChipSkeleton() {

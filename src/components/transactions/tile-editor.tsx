@@ -78,8 +78,8 @@ function TileFormDialog({ tile, tree }: { tile?: EditableTile; tree: PickerNode[
         <DialogHeader>
           <DialogTitle>{tile ? `Edit ${tile.label}` : "Add a quick-add tile"}</DialogTitle>
           <DialogDescription>
-            With a usual amount and a category, one tap on the tile saves it. Its pencil button lets
-            you enter a different amount any time.
+            With a usual amount and a category, one tap on the tile saves it. Edit tiles, beside the
+            tiles, lets you enter a different amount any time.
           </DialogDescription>
         </DialogHeader>
         <ActionForm key={formKey} action={formAction} className="flex flex-col gap-4">

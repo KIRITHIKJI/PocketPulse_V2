@@ -11,7 +11,9 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { type CurrencyCode, formatMoney } from "@/domain";
+// The modules themselves, not the `@/domain` barrel: the barrel brings the schemas and `zod`
+// into the browser's first load.
+import { type CurrencyCode, formatMoney } from "@/domain/money";
 import type { OpStatus, QueuedOp } from "@/lib/offline/ops";
 
 const STATUS: Record<OpStatus, { label: string; icon: LucideIcon; className: string }> = {

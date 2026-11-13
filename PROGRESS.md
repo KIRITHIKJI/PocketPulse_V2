@@ -278,9 +278,91 @@ Layout segments alone (root + `(app)` layouts): 243 → 171. `/home` 267 → 248
 260 → 227, `/add` 266 → 246, `/categories` 267 → 252, `/login` 189 → 160. Largest page on top of the
 shell: `/home` +77 KB, because `zod` now counts with the pages that use it instead of the shell.
 
-**Open:** Home still shows the level twice (sidebar line and Home's card) until 3B. At 375 px the
+**Open:** ~~Home still shows the level twice (sidebar line and Home's card) until 3B~~ (fixed in 3B). At 375 px the
 More sheet's "Rewards" link wraps to a second line. `/home`, `/categories`, `/add` and the
 transaction forms still load `zod` (the full form validates in the browser); 3B can look at that.
+
+### Phase 3B — Home (2026-11-13) ✅
+
+No money logic, domain function, migration or schema change (diff check: nothing under
+`src/domain`, `src/lib/ledger`, `src/lib/data`, `src/lib/actions`, `src/lib/validation`,
+`src/lib/offline`, `src/lib/reports`, `src/app/api`, `supabase`). `OtherEntryRoutes`, `money` and
+`quickEntryCommand` moved from `quick-add-form.tsx` to `quick-entry.tsx` byte-identical (checked by
+diff). No new dependency.
+
+- **Home** (composition and screen review in `doc/DESIGN_PLAN.md`, V2 Phase 3B): the hero (no box)
+  is the net tracked balance beside Safe to Spend's daily amount (stacked on phones), both the
+  existing domain results; without a next income date Safe to Spend says there's no daily amount and
+  links to add it. With any card or loan, one line under the balance: "In wallets ₹X · You owe ₹Y ·
+  Owed to you ₹Z". Then Quick add, Spending (today with its date, this month "so far", income when
+  any), Recent (5 hairline rows + All transactions), Plans (one line for the monthly budget, one for
+  goals) and one progression strip (streak, today's mission, link to Player).
+- **Level once per page:** the strip shows the level only below `lg`; on laptops the sidebar's
+  level line is on screen (new e2e test at both sizes).
+- **Today's mission:** `getTodayMission` (`src/lib/rewards/status.ts`) reads the catalog and today's
+  stored `user_quests` rows (no ledger read): the first daily mission not done or skipped. A mission
+  a save just finished is marked done at once (`missionsDone` in the reward feedback context,
+  cleared after a removal).
+- **Quick add:** the 6 most used tiles in the last 60 days (`mostUsedFirst`, ties and no history →
+  the user's order), shown in the user's order so a tile doesn't move under a thumb; More reveals
+  the rest and the "Log again" shortcuts. Pencils and "Set amount" removed; "Edit tiles" (beside the
+  heading on Home, in the toolbar on `/add`) turns every tap into the sheet (a different amount,
+  optionally kept as the usual one) and links to the tile editor. `/add`'s header "Edit tiles" link
+  removed (one entry). One-tap save and Undo unchanged (same command, ids, 5 s Undo).
+- **Disclaimers:** once, behind the info icon beside the balance label (native `<details>`, no JS).
+- **Empty state:** a new account sees its opening balance, Safe to Spend asking for the income date,
+  all tiles, "Nothing recorded yet", one "Plan when you're ready" line and Level 1 / "Log today".
+- **Net position split:** `src/lib/net-position.ts`, the per-account balances already on Home
+  grouped by kind with the domain's integer helpers; unit test that the parts always add back up to
+  the net balance (spec §4 example, a card purchase + repayment, negative lent, archived settled).
+  **Conflict to note:** CLAUDE.md puts money math in the domain layer; this phase's prompt forbids
+  domain changes. It's a display grouping, not new money logic, so it lives in `src/lib`; it could
+  move into `src/domain/accounts.ts` in a later phase.
+- **Size:** the 38 KB `zod` chunk left `/home`: Home's client components imported the `@/domain`
+  barrel (which brings the schemas); they now import the domain modules directly
+  (`animated-money`, `waiting-entries`, `sync-status`, `quick-add-form`, `lib/format`,
+  `lib/quick-entries`). `useLedger` loads `inverseCommand` on first use (only needed to undo an
+  already-synced queued entry). The quick-add sheet (dialog, form, category picker) loads on first
+  use and is preloaded when the page is idle (then saved by the worker for offline).
+- **Money check:** old build (`c641820`) vs new build back-to-back on the `accounts` V2 test account
+  (seeded through the UI with an unpaid card purchase, an open loan, money lent, a monthly budget, a
+  goal and a next income date) and on the `plan` account: balance ₹4,050, spent today/month ₹5,950,
+  Safe to Spend ₹416.66/day, every recent amount, budget ₹5,950 of ₹8,000 · 74% used · ₹2,050 left,
+  goal ₹0 of ₹3,000 / ₹3,000 to go: identical. `/accounts`, `/safe-to-spend`, `/budgets`, `/goals`
+  identical. Not on Home any more (moved, not changed): the two category budget bars, the XP total
+  and "XP to next level" (Player). New: the split line, which adds up to the balance
+  (₹5,700 − ₹1,950 + ₹300 = ₹4,050) and matches `/accounts`.
+- **Tests changed:** `e2e/transactions.spec.ts` "Design 2" one-tap test waited for hydration by
+  opening the pencil's sheet; it now toggles Edit tiles on and off (same purpose, saves nothing).
+  `tests/unit/quick-add.test.tsx`: "Tea. Set amount" → "Tea. Enter the amount" (and asserts "Set
+  amount" is gone); the pencil test → the Edit tiles test (same assertions plus the editor link and
+  Done); new tests for More and `mostUsedFirst`. New: `tests/unit/net-position.test.ts`, the
+  level-once e2e test in `shell.spec.ts`. No test weakened, no timeout raised.
+- **Test data touched:** the `accounts` test account got the seeded entries above and its profile
+  theme set to "system"; a throwaway account `pp-e2e-home-empty@example.test` was created on V2 for
+  the empty-state shots and deleted afterwards.
+
+**Checks (final code, this machine):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 29 s |
+| `npm run typecheck` | ✅ | 6 s |
+| `npm test` | ✅ 40 files / 965 tests (was 39 / 957) | 14 s |
+| `npm run build` | ✅ | 49 s |
+| `npm run test:smoke` | ✅ 49 passed | 184 s incl. build |
+| While working: shell, transactions, offline, accounts e2e | ✅ 55 passed, 2 skipped (laptop-only fit tests on the phone project) | 128 s |
+| While working: a11y `/home` (4 theme/size runs), rewards Home test, budget alert test | ✅ 19 passed (incl. sign-ins) | 21 s |
+
+**Sizes** (`scripts/route-js.mjs`, gzip KB, before = `c641820`): `/home` 248 → **190**, shell
+(`/settings/data`) 175 → 173, so Home is 17 KB above the shell (was 73 by this measure; 77 above the
+layout segments alone, now 26 incl. its error chunks). Also smaller because of the barrel fix:
+`/add` 247 → 205, `/transactions/[id]` 228 → 188, `/goals`, `/safe-to-spend`, `/survival` −37.
+Largest growth +1 KB (`/add/text`, `/insights/category/[id]`).
+
+**Open:** the empty Recent state's icon is still violet (shared `StatePanel`, 3F). The strip has no
+rank emblem yet (3C). Other screens' client components may still import the `@/domain` barrel
+(`/categories` 252, `/onboarding` 237 still carry `zod`).
 
 ### Checklist for Phases 2–6
 
@@ -312,7 +394,7 @@ transaction forms still load `zod` (the full form validates in the browser); 3B 
 
 **Phase 3 — redesign (prompts 3A–3F)**
 - [x] 3A tokens, primitives, 8-link sidebar, Add sheet, hubs, mobile bar
-- [ ] 3B Home
+- [x] 3B Home
 - [ ] 3C emblem directions (your choice), RankEmblem/AchievementBadge, Player status (your approval)
 - [ ] 3D Missions, Achievements, Rewards, feedback moments
 - [ ] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring

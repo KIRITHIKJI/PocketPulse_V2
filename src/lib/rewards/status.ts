@@ -2,11 +2,12 @@ import "server-only";
 
 import { cache } from "react";
 
-import { type LocalDate, daysBetween, totalXp } from "@/domain";
+import { type LocalDate, OPT_OUT_PERIOD, daysBetween, totalXp } from "@/domain";
 import { DataLoadError } from "@/lib/data/errors";
 import { getProfile } from "@/lib/data/queries";
 import { requestNow, requestToday, requireSession } from "@/lib/data/session";
 import { type PlayerStatus, playerStatus } from "@/lib/rewards/feedback";
+import { rewardCatalog } from "@/lib/rewards/sync";
 
 export type { PlayerStatus };
 
@@ -34,4 +35,44 @@ export const getPlayerStatus = cache(async (): Promise<PlayerStatus> => {
   const today = requestToday(profile.timeZone);
   const current = last !== null && daysBetween(last, today) <= 1;
   return playerStatus(xp, current ? Number(streak.data?.current_daily ?? 0) : 0, requestNow());
+});
+
+export interface TodayMission {
+  code: string;
+  title: string;
+  xp: number;
+  /** True when every daily mission is done; the mission is then the last one finished. */
+  done: boolean;
+}
+
+/**
+ * Today's mission for Home's progress strip: the first daily mission not done yet, or the last one
+ * once all are done. Read from the progress the last reward sync stored (no ledger read, like the
+ * status above). Null when every daily mission is skipped.
+ */
+export const getTodayMission = cache(async (): Promise<TodayMission | null> => {
+  const { supabase } = await requireSession();
+  const profile = await getProfile();
+  const today = requestToday(profile.timeZone);
+  const [catalog, rows] = await Promise.all([
+    rewardCatalog(),
+    supabase
+      .from("user_quests")
+      .select("quest_code, period_key, completed_at, opted_out_at")
+      .in("period_key", [today, OPT_OUT_PERIOD]),
+  ]);
+  if (rows.error) throw new DataLoadError("your missions", rows.error.code);
+  const codes = (period: string, column: "completed_at" | "opted_out_at") =>
+    new Set(
+      (rows.data ?? [])
+        .filter((row) => row.period_key === period && row[column] !== null)
+        .map((row) => row.quest_code as string),
+    );
+  const skipped = codes(OPT_OUT_PERIOD, "opted_out_at");
+  const done = codes(today, "completed_at");
+  const daily = catalog.quests.filter((q) => q.cadence === "daily" && !skipped.has(q.code));
+  const next = daily.find((q) => !done.has(q.code));
+  const mission = next ?? daily.at(-1);
+  if (!mission) return null;
+  return { code: mission.code, title: mission.title, xp: mission.xp, done: !next };
 });

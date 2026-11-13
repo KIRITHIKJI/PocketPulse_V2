@@ -6,7 +6,7 @@ import { useRewardFeedback } from "@/components/feedback/reward-feedback";
 import { useToast } from "@/components/feedback/toast";
 import { useOffline } from "@/components/offline/offline-provider";
 import { type CommandResult, runLedgerCommand } from "@/lib/actions/transactions";
-import { type LedgerCommand, inverseCommand } from "@/lib/ledger/commands";
+import type { LedgerCommand } from "@/lib/ledger/commands";
 import { newId } from "@/lib/ids";
 import { type RememberAmount, commandEntryId } from "@/lib/offline/ops";
 import { savePagesSoon } from "@/lib/offline/pwa";
@@ -108,6 +108,9 @@ export function useLedger() {
         show({ tone: "success", message: "Removed. It was never sent." });
         return;
       }
+      // Loaded here rather than with the page: the command schemas (and `zod`) are needed only
+      // when an entry that already synced is undone from the queue's toast.
+      const { inverseCommand } = await import("@/lib/ledger/commands");
       const reverse = inverseCommand(command, null, null, newId());
       if (reverse) await undo(reverse);
       else show({ tone: "error", message: "This already synced. Change it from History." });

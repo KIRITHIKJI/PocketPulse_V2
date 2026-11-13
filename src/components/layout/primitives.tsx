@@ -36,7 +36,7 @@ export function Hero({
       {...props}
     >
       <div className="flex min-w-0 flex-col gap-1">
-        <p className="type-label text-text-secondary">{label}</p>
+        <div className="type-label text-text-secondary">{label}</div>
         <p className="type-hero money">{value}</p>
         {meta ? <p className="type-body text-text-secondary">{meta}</p> : null}
       </div>
@@ -170,6 +170,7 @@ export function DataRow({
   detail,
   value,
   href,
+  testId,
   className,
 }: {
   leading?: React.ReactNode;
@@ -177,6 +178,7 @@ export function DataRow({
   detail?: React.ReactNode;
   value?: React.ReactNode;
   href?: Route;
+  testId?: string;
   className?: string;
 }) {
   const row = cn(
@@ -198,7 +200,7 @@ export function DataRow({
     </>
   );
   return (
-    <li data-slot="data-row">
+    <li data-slot="data-row" data-testid={testId}>
       {href ? (
         <Link href={href} className={row}>
           {body}

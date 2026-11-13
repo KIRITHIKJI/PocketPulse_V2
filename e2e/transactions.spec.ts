@@ -155,14 +155,15 @@ test(
       const tea = page.getByRole("list", { name: "Quick-add tiles" }).getByRole("button", {
         name: new RegExp(`^Tea, ${rupees(amount.paise).replace(".", "\\.")}\\. Saves in one tap`),
       });
-      // A tap before hydration does nothing. Wait for the page to answer with the harmless pencil
-      // (it opens the sheet), so the double tap below is the only one.
+      // A tap before hydration does nothing. Wait for the page to answer with the harmless Edit
+      // tiles toggle (it saves nothing), then turn it off, so the double tap below is the only one.
+      const editTiles = main(page).getByRole("button", { name: "Edit tiles" });
       await expect(async () => {
-        await page.getByRole("button", { name: "Change the amount for Tea" }).click();
-        await expect(page.getByRole("dialog")).toBeVisible({ timeout: 1_000 });
+        await editTiles.click();
+        await expect(editTiles).toHaveAttribute("aria-pressed", "true", { timeout: 1_000 });
       }).toPass();
-      await page.keyboard.press("Escape");
-      await expect(page.getByRole("dialog")).toBeHidden();
+      await editTiles.click();
+      await expect(editTiles).toHaveAttribute("aria-pressed", "false");
 
       await tea.dblclick();
       await expect(toast(page)).toContainText(`Saved ${rupees(amount.paise)} · Tea`);

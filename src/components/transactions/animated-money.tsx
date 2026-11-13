@@ -2,7 +2,9 @@
 
 import * as React from "react";
 
-import { type CurrencyCode, formatMoney } from "@/domain";
+// The modules themselves, not the `@/domain` barrel: the barrel brings the schemas and `zod`
+// into the browser's first load.
+import { type CurrencyCode, formatMoney } from "@/domain/money";
 
 // Under 300 ms, like every animation (doc/DESIGN_PLAN.md §6).
 const DURATION_MS = 280;

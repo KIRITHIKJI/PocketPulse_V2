@@ -465,3 +465,63 @@ from the a11y run: the slim level line had an `aria-label` that hid its visible 
 
 **Left for later prompts:** Home still shows the level twice (sidebar line and Home's player card)
 until Phase 3B removes the card's level; the screens' own boxes and violet icon tiles are 3B–3F.
+
+---
+
+## V2 — Phase 3B: Home (2026-11-13)
+
+### Home — composition (written before coding)
+
+- **Dominant element:** the hero, with no box: the net tracked balance (`type-hero`) and, beside it
+  on laptops (under it on phones), Safe to Spend's daily amount (`type-display`, estimate colour,
+  "Safe to Spend · estimate"), linking to `/safe-to-spend`. Both are the existing domain results
+  (`wallet_balances` closing figure, `calculateSafeToSpend` through `loadPlan`). Without a next
+  income date the right side says there is no daily amount and links to add the date; no number.
+- **Under the balance:** one quiet line, only when the user has a card or loan: "In wallets ₹X · You
+  owe ₹Y · Owed to you ₹Z" (the same per-account balances, split by kind; the parts add back up to
+  the net figure).
+- **Secondary, left column:** Quick add (the 6 most used tiles, in the user's order; More reveals the
+  rest and the "Log again" shortcuts; Type it, Say it; "Edit tiles" beside the heading), then Recent
+  (5 rows divided by hairlines, a link to all transactions).
+- **Secondary, right column:** Spending (Spent today with its date, Spent this month with "November
+  so far" and income when there is any), Plans (one line for the monthly budget, one for goals, each a
+  link), and one progression strip (streak, today's mission; the level only where the sidebar isn't
+  shown), the only bordered box.
+- **Removed or moved:** the hero card's box; the pencil on every tile and "Set amount" (Edit tiles
+  mode instead); 13 tiles → 6 + More; the disclaimer lines under the balance, the spending figures,
+  the goals and Safe to Spend → one info icon beside the balance label; the budget card with its
+  category bars and the goal card → one line each; the player card (level, XP bar, XP total) → the
+  strip; the Safe to Spend card at the bottom of the side column → the hero.
+- **Difference from V1:** one figure pair leads instead of a card grid; five outlined boxes and 13
+  outlined tiles become one bordered strip and filled tiles; every repeated helper sentence is gone.
+
+### Screen review — Home (with data: a card, a loan, money lent, a budget, a goal; and a new account
+with no entries). 375 and 1440 px, dark and light. Screenshots in `doc/screens/3B/`
+(`*-round1.png` before the fixes, the rest after; the two empty-account light round-1 shots were
+removed because they rendered dark, see below; `*-open.png` with More, Edit tiles and the info
+note open).
+
+1. *One dominant element in the first second?* Yes: the balance and the daily amount, the two
+   largest figures, at the top. Everything else is `type-heading` or smaller.
+2. *Bordered boxes at once (desktop)?* One: the progression strip. Tiles are filled, not outlined;
+   sections are divided by hairlines; the info note is a popover only while open.
+3. *Template without the logo?* Less than before: the label-over-figure hero, the uppercase scope
+   labels, the side column of plain figures and the filled tile grid are this system's own. The
+   strongest identity still comes later (rank emblem in the strip, Phase 3C).
+4. *Anything from "must not look like"?* No: no gradients, glows, badges or dots added. Violet:
+   the Add button, the active nav item, the sidebar XP bar, and the shared `StatePanel` icon in the
+   empty Recent state (that component is used on every screen; left for 3F with the other screens).
+5. *Same tokens as finished screens?* Yes: the 3A primitives (`Hero`, `Section`, `StatRow`/`Stat`,
+   `DataList`/`DataRow`, `Panel`), `type-*` roles and finance tokens; compared with the 3A shell.
+6. *Phone designed, light deliberate?* On phones the order is hero, tiles, spending, recent, plans,
+   strip; both tile rows are in the first screen at 375×812. Light uses its own inset and divider
+   tokens; the estimate colour has its light value.
+
+**Fix round (round 1 → final):** "Spent this month" wrapped onto two lines in the side column and
+pushed its figure below "Spent today"'s (labels kept on one line, narrower column padding); on
+phones "Edit tiles" fell onto a line of its own under More / Type it / Say it (moved beside the
+"Quick add" heading); the wallets line broke inside "Owed to you ₹300" (each part now stays whole);
+the empty state repeated a "Type it" button that sits right above it (removed); on phones the
+no-income-date arrow drifted away from "Add it" (kept with its words). Also found: a new account's
+profile theme is "dark" by default and wins over the browser's, so the first light screenshots of
+the empty account were dark; the light shots now use accounts set to "system".

@@ -29,6 +29,8 @@ type RewardFeedbackValue = {
   enabled: boolean;
   /** The newest player status this session has seen, for chips already on screen. */
   status: PlayerStatus | null;
+  /** Missions this session's syncs reported done, for a strip already on screen. */
+  missionsDone: readonly string[];
   /** After a save was answered: sync its rewards and show what it earned. */
   afterSave: (sourceId: string) => void;
   /** After a delete or an Undo of `sourceId`: drop what it earned, take the server's status. */
@@ -54,6 +56,7 @@ export function RewardFeedbackProvider({
 }) {
   const { note, reward, cancel } = useToast();
   const [status, setStatus] = React.useState<PlayerStatus | null>(null);
+  const [missionsDone, setMissionsDone] = React.useState<readonly string[]>([]);
   const chain = React.useRef<Promise<void>>(Promise.resolve());
   const cancelled = React.useRef(new Set<string>());
   const xpTimes = React.useRef<number[]>([]);
@@ -66,6 +69,10 @@ export function RewardFeedbackProvider({
     (feedback: RewardFeedback | null, sourceId: string | null = null) => {
       if (!feedback) return;
       newer(feedback.status);
+      if (feedback.missionsCompleted.length > 0) {
+        const codes = feedback.missionsCompleted.map((m) => m.code);
+        setMissionsDone((done) => [...done, ...codes]);
+      }
       if (!enabled || !hasFeedback(feedback)) return;
 
       const parts: string[] = [];
@@ -154,13 +161,15 @@ export function RewardFeedbackProvider({
       cancelled.current.add(sourceId);
       cancel(sourceId);
       newer(next);
+      // A removal can take a mission back; the page it refreshes says what's done now.
+      setMissionsDone([]);
     },
     [cancel, newer],
   );
 
   const value = React.useMemo(
-    () => ({ enabled, status, afterSave, afterRemoval, present }),
-    [enabled, status, afterSave, afterRemoval, present],
+    () => ({ enabled, status, missionsDone, afterSave, afterRemoval, present }),
+    [enabled, status, missionsDone, afterSave, afterRemoval, present],
   );
   return <RewardFeedbackContext.Provider value={value}>{children}</RewardFeedbackContext.Provider>;
 }
@@ -169,6 +178,7 @@ export function RewardFeedbackProvider({
 const QUIET: RewardFeedbackValue = {
   enabled: false,
   status: null,
+  missionsDone: [],
   afterSave: () => {},
   afterRemoval: () => {},
   present: () => {},

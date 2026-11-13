@@ -1,15 +1,16 @@
 /** Display formatting for calendar dates (amounts use `formatMoney` from `@/domain`). */
+// The modules themselves, not the `@/domain` barrel: the barrel brings the schemas and `zod`
+// into the browser's first load.
+import { type Paise, paiseToDecimalString } from "@/domain/money";
 import {
   type LocalDate,
-  type Paise,
   addDays,
-  paiseToDecimalString,
   parseInstant,
   parseLocalDate,
   toLocalDate,
   toLocalTime,
   weekdayOf,
-} from "@/domain";
+} from "@/domain/time";
 
 /** Paise as an editable amount: 150000 → "1500", 1250 → "12.50", −500 → "-5". */
 export function paiseToInput(amount: Paise | null | undefined): string {

@@ -2,16 +2,13 @@
  * Builds the quick-add tiles and the "log again" shortcuts (repeat last expense, frequent
  * entries) from the user's presets and ledger. Pure; the screens only render the result.
  */
-import {
-  type Category,
-  type ExpenseTransaction,
-  type Instant,
-  type Transaction,
-  categoryLabel,
-  frequentExpenses,
-  lastExpense,
-  resolveCategoryChoice,
-} from "@/domain";
+// The modules themselves, not the `@/domain` barrel: the barrel brings the schemas and `zod`
+// into the browser's first load.
+import { categoryLabel, resolveCategoryChoice } from "@/domain/category-tree";
+import { isActive, occurredAtMs } from "@/domain/ledger";
+import type { Category, ExpenseTransaction, Transaction } from "@/domain/schemas";
+import { frequentExpenses, frequentExpensesSince, lastExpense } from "@/domain/shortcuts";
+import type { Instant } from "@/domain/time";
 import { CATEGORY_ICON_NAMES } from "@/lib/category-style";
 import type { QuickAddPreset } from "@/lib/data/queries";
 
@@ -80,6 +77,39 @@ export function tileEntries(presets: readonly QuickAddPreset[], categories: read
         askDetails: choice === null,
       };
     });
+}
+
+/** How many tiles Home shows before "More". */
+export const HOME_TILES = 6;
+
+/**
+ * Home's tiles: the `count` tiles used most in the "frequent" look-back come first, in the
+ * user's own order so a tile doesn't jump under a thumb; the rest follow, also in that order.
+ * Ties, and a new account without history, fall back to the user's order.
+ */
+export function mostUsedFirst(
+  tiles: readonly QuickEntry[],
+  ledger: readonly Transaction[],
+  now: Instant,
+  count: number = HOME_TILES,
+): QuickEntry[] {
+  const since = frequentExpensesSince(now);
+  const uses = new Map<string, number>();
+  for (const tx of ledger) {
+    if (tx.type !== "expense" || !tx.presetId || !isActive(tx)) continue;
+    const at = occurredAtMs(tx);
+    if (at < since || at > now) continue;
+    uses.set(tx.presetId, (uses.get(tx.presetId) ?? 0) + 1);
+  }
+  const usesOf = (tile: QuickEntry) => (tile.presetId ? (uses.get(tile.presetId) ?? 0) : 0);
+  const top = new Set(
+    tiles
+      .map((tile, order) => ({ tile, order }))
+      .sort((a, b) => usesOf(b.tile) - usesOf(a.tile) || a.order - b.order)
+      .slice(0, count)
+      .map(({ tile }) => tile.key),
+  );
+  return [...tiles.filter((t) => top.has(t.key)), ...tiles.filter((t) => !top.has(t.key))];
 }
 
 function fromExpense(tx: ExpenseTransaction, key: string, byId: Map<string, Category>): QuickEntry {

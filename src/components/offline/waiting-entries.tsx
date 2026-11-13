@@ -6,7 +6,9 @@ import { ArrowRight } from "lucide-react";
 import { useOffline } from "@/components/offline/offline-provider";
 import { StatusBadge, opAmount } from "@/components/offline/sync-status";
 import { Card } from "@/components/ui/card";
-import { type CurrencyCode, formatMoney, sumPaise } from "@/domain";
+// The modules themselves, not the `@/domain` barrel: the barrel brings the schemas and `zod`
+// into the browser's first load.
+import { type CurrencyCode, formatMoney, sumPaise } from "@/domain/money";
 
 const SHOWN = 3;
 

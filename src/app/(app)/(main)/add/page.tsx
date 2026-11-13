@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Settings2, Zap } from "lucide-react";
+import { Check, Zap } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { StatePanel } from "@/components/states/state-panel";
@@ -93,15 +93,7 @@ export default async function QuickAddPage({
     <>
       <PageHeader
         title="Quick add"
-        description="A tile with a usual amount saves in one tap. Its pencil enters a different amount."
-        actions={
-          <Button variant="outline" asChild>
-            <Link href="/add?tab=edit">
-              <Settings2 aria-hidden="true" />
-              Edit tiles
-            </Link>
-          </Button>
-        }
+        description="A tile with a usual amount saves in one tap. Edit tiles enters a different amount, or adds, hides and reorders tiles."
         tabs="add"
       />
 
