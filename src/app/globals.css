@@ -175,9 +175,15 @@
   /* The 1px engraved highlight on progression edges and emblems. */
   --metal-line: oklch(1 0 0 / 12%);
   --highlight-line: oklch(1 0 0 / 6%);
-  /* A small mark that stands for the level outside progression screens (sidebar, Home). */
-  --level-mark-bg: var(--pp-night-900);
-  --level-mark-fg: var(--pp-steel-200);
+  /* Rank emblems and achievement badges (src/components/rewards/emblems.tsx): cut metal lit
+     from the top left (hi → lo), a dark well, 1px engraved lines, bronze and violet as accents. */
+  --emblem-hi: var(--pp-steel-200);
+  --emblem-mid: var(--pp-steel-400);
+  --emblem-lo: oklch(0.34 0.012 262);
+  --emblem-well: var(--pp-night-900);
+  --emblem-line: oklch(1 0 0 / 16%);
+  --emblem-bronze: var(--pp-bronze-300);
+  --emblem-accent: var(--pp-violet-400);
 
   /* shadcn names, kept as layer-2 aliases so every screen works during the redesign. */
   --background: var(--surface-page);
@@ -294,8 +300,14 @@
   --metal-bronze: var(--pp-bronze-500);
   --metal-line: oklch(0.21 0.03 275 / 16%);
   --highlight-line: oklch(1 0 0 / 70%);
-  --level-mark-bg: var(--surface-inset);
-  --level-mark-fg: var(--pp-ink-600);
+  /* On light surfaces (the sidebar, Home) the metal is darker and the well is light. */
+  --emblem-hi: oklch(0.58 0.014 255);
+  --emblem-mid: var(--pp-steel-600);
+  --emblem-lo: var(--pp-graphite-700);
+  --emblem-well: var(--surface-inset);
+  --emblem-line: oklch(0.21 0.03 275 / 16%);
+  --emblem-bronze: var(--pp-bronze-500);
+  --emblem-accent: var(--pp-violet-600);
 
   --background: var(--surface-page);
   --background-elevated: oklch(0.995 0.002 275);
@@ -339,6 +351,17 @@
   --glow: var(--gradient-page);
 }
 
+/* The progression band stays deep in the light theme, so emblems on it use the dark metals. */
+.light .progression-deep {
+  --emblem-hi: var(--pp-steel-200);
+  --emblem-mid: var(--pp-steel-400);
+  --emblem-lo: oklch(0.34 0.012 262);
+  --emblem-well: var(--progression-base);
+  --emblem-line: oklch(1 0 0 / 16%);
+  --emblem-bronze: var(--pp-bronze-300);
+  --emblem-accent: var(--pp-violet-400);
+}
+
 /* Layer 3: component tokens. They refer to layer 2 only, so both themes follow. */
 :root,
 .dark,
@@ -376,14 +399,19 @@
   /* An ordinary hero's top edge: a neutral 1px highlight, not a violet line. */
   --surface-hero-edge: linear-gradient(90deg, transparent, var(--highlight-line), transparent);
 
-  /* Progression band: base, one soft light behind the main object, a fine contour pattern that
-     fades toward the edges, and slightly darker corners. */
+  /* Progression band: the near-black base with slightly darker corners. The halo is the layer
+     centred on the main object: one soft light and a fine contour pattern, faded toward the edges
+     by a radial mask where it is used (src/components/rewards/rank-band.tsx). */
   --progression-band-bg:
     radial-gradient(ellipse 70% 90% at 50% 45%, transparent 55%, var(--progression-vignette)),
-    radial-gradient(28rem 20rem at 50% 42%, var(--progression-light), transparent 70%),
     var(--progression-base);
+  --progression-halo:
+    radial-gradient(closest-side, var(--progression-light), transparent 75%),
+    var(--progression-pattern);
+  /* The 1px highlight on the band's top edge: the same faint line in both themes (it is deep). */
+  --progression-edge: oklch(1 0 0 / 8%);
   --progression-pattern: repeating-radial-gradient(
-    circle at 50% 42%,
+    circle at 50% 50%,
     transparent 0 23px,
     var(--progression-pattern-line) 23px 24px
   );
@@ -529,6 +557,18 @@
   @media (min-width: 64rem) {
     font-size: 3rem;
     line-height: 3.25rem;
+  }
+}
+
+/* The rank name on Player status: the page's one large word. */
+@utility type-rank {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  @media (min-width: 64rem) {
+    font-size: 3.5rem;
+    line-height: 3.75rem;
   }
 }
 
@@ -721,6 +761,17 @@ html[data-motion="reduce"] .pp-celebrate-piece {
 
 .pp-level-rise {
   animation: pp-level-rise var(--duration-emphasis) var(--ease-out) both;
+}
+
+/* The XP ring on Player status fills once, from empty to its value (reduced motion: at once). */
+@keyframes pp-xp-ring {
+  from {
+    stroke-dashoffset: 100;
+  }
+}
+
+.pp-xp-ring {
+  animation: pp-xp-ring 600ms var(--ease-out) both;
 }
 
 @keyframes pp-dim-in {

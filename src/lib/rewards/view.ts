@@ -9,6 +9,7 @@ import {
   addDays,
   levelFor,
   parseInstant,
+  rankFor,
   toLocalDate,
   totalXp,
 } from "@/domain";
@@ -51,6 +52,9 @@ export interface Milestone {
   kind: "level" | "achievement";
   title: string;
   at: string;
+  /** The rank reached (a level), or the achievement's icon: what its small emblem shows. */
+  rank?: string;
+  icon?: string | null;
 }
 
 export interface HistoryRow {
@@ -149,12 +153,14 @@ function milestonesFrom(plan: RewardPlan, achievements: AchievementView[]): Mile
     xp += e.xp;
     const reached = levelFor(xp).level;
     for (let n = level + 1; n <= reached; n += 1) {
-      out.push({ kind: "level", title: `Reached level ${n}`, at: e.createdAt });
+      out.push({ kind: "level", title: `Reached level ${n}`, at: e.createdAt, rank: rankFor(n) });
     }
     level = reached;
   }
   for (const a of achievements) {
-    if (a.unlockedAt) out.push({ kind: "achievement", title: a.title, at: a.unlockedAt });
+    if (a.unlockedAt) {
+      out.push({ kind: "achievement", title: a.title, at: a.unlockedAt, icon: a.icon });
+    }
   }
   return out.sort((a, b) => parseInstant(b.at) - parseInstant(a.at));
 }

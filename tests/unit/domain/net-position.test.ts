@@ -1,7 +1,12 @@
-import { type Account, type AccountKind, accountSchema, consolidatedBalanceAt } from "@/domain";
-import { netPositionParts } from "@/lib/net-position";
+import {
+  type Account,
+  type AccountKind,
+  accountSchema,
+  consolidatedBalanceAt,
+  netPositionParts,
+} from "@/domain";
 
-import { CASH, OWNER, expense, id, istMs, transfer } from "./domain/fixtures";
+import { CASH, OWNER, expense, id, istMs, transfer } from "./fixtures";
 
 // Home's "In wallets · You owe · Owed to you" line: three parts of the net figure, never a new one.
 const NOW = istMs("2026-11-10");

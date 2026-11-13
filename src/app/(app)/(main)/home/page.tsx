@@ -23,6 +23,7 @@ import {
   goalProgress,
   indexById,
   moneyFormatter,
+  netPositionParts,
   netSpending,
   occurredAtMs,
   resolvePeriod,
@@ -49,7 +50,6 @@ import { earliestStart, isoInstant, mergeLedger, startForAnyZone } from "@/lib/d
 import { entryView } from "@/lib/entry-view";
 import { formatDayLabel, formatLocalDate, formatTimeOf } from "@/lib/format";
 import { newestFirst } from "@/lib/history";
-import { netPositionParts } from "@/lib/net-position";
 import { HOME_TILES, mostUsedFirst, shortcutEntries, tileEntries } from "@/lib/quick-entries";
 
 export const metadata: Metadata = { title: "Home" };

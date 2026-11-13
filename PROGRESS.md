@@ -317,7 +317,7 @@ diff). No new dependency.
   the net balance (spec §4 example, a card purchase + repayment, negative lent, archived settled).
   **Conflict to note:** CLAUDE.md puts money math in the domain layer; this phase's prompt forbids
   domain changes. It's a display grouping, not new money logic, so it lives in `src/lib`; it could
-  move into `src/domain/accounts.ts` in a later phase.
+  move into `src/domain/accounts.ts` in a later phase. (Moved to `src/domain/net-position.ts` in 3C.)
 - **Size:** the 38 KB `zod` chunk left `/home`: Home's client components imported the `@/domain`
   barrel (which brings the schemas); they now import the domain modules directly
   (`animated-money`, `waiting-entries`, `sync-status`, `quick-add-form`, `lib/format`,
@@ -364,6 +364,92 @@ Largest growth +1 KB (`/add/text`, `/insights/category/[id]`).
 rank emblem yet (3C). Other screens' client components may still import the `@/domain` barrel
 (`/categories` 252, `/onboarding` 237 still carry `zod`).
 
+### Phase 3C — rank emblems and Player status (2026-11-13) ✅
+
+No money logic, migration or schema change, and no reward rule change. Diff check: under
+`src/domain` only the Task 0 move (`net-position.ts` added, one export line in `index.ts`); nothing
+under `src/lib/ledger`, `src/lib/data`, `src/lib/actions`, `src/lib/validation`, `src/lib/offline`,
+`src/lib/reports`, `src/app/api` or `supabase`; `src/domain/rewards.ts` and
+`src/lib/rewards/{engine,feedback,sync,status}.ts` untouched. No new dependency.
+
+- **Task 0:** Home's card/loan grouping moved from `src/lib/net-position.ts` to
+  `src/domain/net-position.ts` (exported from the domain barrel), its test to
+  `tests/unit/domain/net-position.test.ts`. The function body is byte-identical (checked by diff);
+  only the imports changed to the domain's relative ones. Its own file, not `accounts.ts`, because a
+  browser component imports `@/domain/accounts` directly to keep `zod` out of the browser, and this
+  grouping needs `LOAN_KINDS` from `schemas`. Resolves the 3B conflict note.
+- **Emblem direction (your choice):** direction 3, "Sigil", revised at your request to be more
+  restrained: the logo's pulse line cut into a metal diamond, one violet dot; each rank adds one
+  1 px hairline (frame, inner line, ring, bronze inner line); no second square or star. The three
+  directions and the revision: `doc/screens/3C/direction-{1,2,3}.png`, `direction-3-revised.png`.
+  Known trade-off you accepted: at 24 px Starter and Tracker look the same (the rank name is always
+  beside it).
+- **Components** (`src/components/rewards/emblems.tsx`, inline SVG, no client code): `RankEmblem`
+  (rank name → one of five tiers; a simpler thick-line drawing at ≤ 32 px) and `AchievementBadge`
+  (a cut hexagon with one engraved glyph per catalog achievement, keyed by its `icon`; locked = dim
+  outline, no fill, no accent). Colours only from new `--emblem-*` tokens (dark metal in the dark
+  theme and on the deep band via `.progression-deep`; darker metal on a light well on light
+  surfaces); the unused `--level-mark-*` tokens were replaced. Accessible name through `label`, or
+  hidden where the rank is written beside it. AchievementBadge is not on the Achievements screen yet
+  (3D); Player status uses it for achievement milestones.
+- **Player status** (composition and review in `doc/DESIGN_PLAN.md`, V2 Phase 3C): one deep band
+  (`RankBand`, `src/components/rewards/rank-band.tsx`) with the emblem inside a 3 px XP ring (faint
+  track, quarter ticks, violet fill from 12 o'clock, fills once in 600 ms, reduced motion at once;
+  `role="progressbar"` with the level's figures), "RANK", the rank name (`type-rank`, 36 / 56 px), the
+  level line and XP to the next level (a new account: "Your first logged day earns 10 XP" and a
+  Quick add link). Depth: base with darker corners, one halo centred on the emblem (soft light +
+  contour rings, masked to fade), 1 px top highlight. Below: streaks and lifetime XP in one hairline
+  row, one line about streaks, milestones as hairline rows with a small emblem or badge, only when
+  there are any. Removed: the status card with the numbered square and flat bar, the three stat
+  boxes with stock icons, the empty Milestones box. The band stays deep in the light theme.
+  `Milestone` (`src/lib/rewards/view.ts`) gained `rank` (from the domain's `rankFor`) and `icon` for
+  those small marks; nothing it counts changed.
+- **Sidebar and Home:** the sidebar level line and Home's progress strip show the 24 / 32 px emblem
+  instead of the numbered square (Home's level text still only below laptop width).
+- **Reward figures, before vs after** (old build `e0817e0` and the new build, same day, six test
+  accounts: `user`, `rewards`, `accounts`, `motion`, `plan`, `transactions`): level, rank, total XP,
+  XP into the level / level span, XP to the next level (or the first-day line), current and longest
+  streak, lifetime XP, and every milestone with its day: **identical on all six** (levels 1–2,
+  0–105 XP, streak 0–1, 0–2 milestones). The old card printed the XP total twice ("N XP in total" and
+  Lifetime XP); it now shows once, as Lifetime XP.
+- **Tests changed:** new `tests/unit/emblems.test.tsx` (ranks match `rankFor` for levels 1–40, a
+  layer per rank at both sizes, names, token-only colours, a distinct glyph for every achievement in
+  the seed, locked state). `e2e/rewards.spec.ts` "Home links its progress to Player status": now also
+  checks the emblem's name, that the ring's value matches the printed level line, and that the empty
+  Milestones box is gone. `e2e/accounts.spec.ts` `openAccount` (fix of a Phase 2B race found by the
+  smoke run): it counted the account links once without waiting, so under load it could look before
+  the list replaced the loading skeleton, decide `zzcard` was missing and try to add a duplicate
+  (refused by the one-active-name index); it now waits for the loaded page (Add wallet visible, no
+  skeleton). No test weakened, no timeout raised.
+- **Test data touched:** the `report` test account's theme set to "Match device" through Settings
+  (every test account was saved as "dark", which wins over the browser), for the level-1 light
+  screenshots.
+
+**Checks (final code, this machine):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 18 s |
+| `npm run typecheck` | ✅ | 6 s |
+| `npm test` | ✅ 41 files / 973 tests (was 40 / 965) | 14 s |
+| `npm run build` | ✅ 42 pages | 19 s |
+| `npm run test:smoke` | first run: 46 passed, 1 failed (the accounts race above), 2 not run; after the test fix: ✅ 49 passed | 140 s / 139 s incl. build |
+| While working: rewards + shell e2e (desktop, mobile) | ✅ 37 passed, 2 skipped (laptop-only fit tests on the phone project) | 77 s |
+| While working: updated rewards test + a11y `/rewards/status` and `/home` (both themes, both sizes) | ✅ 26 passed (incl. sign-ins) | 41 s |
+| While working: related unit tests | ✅ 8 files / 131 tests | 18 s |
+| DB tests | not run (no DB code changed) | — |
+
+**Sizes** (`scripts/route-js.mjs`, gzip KB, before = `e0817e0`): `/rewards/status` 187 → **172**
+(it no longer loads the mission and achievement client parts). Shell (`/settings/data`) 173 → 174
+(the emblem in the sidebar). 13 routes +1 or −1, 25 unchanged; nothing grew by more than 1 KB.
+Largest page above the shell: `/categories` +78 (252, unchanged by this phase; it still carries
+`zod`, see 3B "Open"), over the 70 KB rule before and after; every other page is within 70.
+
+**Open:** at 24 px Starter and Tracker share a drawing (accepted). `/categories` is 78 KB above the
+shell (pre-existing). `AchievementBadge` reaches the Achievements, Missions and Rewards screens in
+3D. The progression visual language for 3D: the deep band with its centred halo, the 3 px ring,
+`type-label` over `type-rank`, figures in hairline rows under the band, violet only on progress.
+
 ### Checklist for Phases 2–6
 
 **Phase 2A — faster tests (test infrastructure only)**
@@ -395,7 +481,7 @@ rank emblem yet (3C). Other screens' client components may still import the `@/d
 **Phase 3 — redesign (prompts 3A–3F)**
 - [x] 3A tokens, primitives, 8-link sidebar, Add sheet, hubs, mobile bar
 - [x] 3B Home
-- [ ] 3C emblem directions (your choice), RankEmblem/AchievementBadge, Player status (your approval)
+- [x] 3C emblem directions (your choice: Sigil, revised), RankEmblem/AchievementBadge, Player status (your approval)
 - [ ] 3D Missions, Achievements, Rewards, feedback moments
 - [ ] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring
 - [ ] 3F Transactions, Accounts, Categories, Reports, Reminders, Settings, auth, onboarding; mobile

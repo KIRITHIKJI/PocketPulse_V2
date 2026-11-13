@@ -36,6 +36,10 @@ async function openAccount(
   kind?: "credit_card" | "loan_borrowed" | "loan_lent",
 ) {
   await page.goto("/accounts");
+  // Decide only once the list has rendered: counting while the loading skeleton still shows
+  // finds no link and adds a duplicate, which the database refuses (one active name per owner).
+  await expect(main(page).getByRole("button", { name: "Add wallet" })).toBeVisible();
+  await expect(page.locator('[data-slot="skeleton"]')).toHaveCount(0);
   const link = main(page).getByRole("link", { name, exact: true });
   if (kind && (await link.count()) === 0) {
     await main(page).getByRole("button", { name: "Add wallet" }).click();

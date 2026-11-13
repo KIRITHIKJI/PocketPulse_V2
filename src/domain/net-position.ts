@@ -7,15 +7,9 @@
  *
  * Integer paise through the domain's money helpers; nothing new is calculated about any account.
  */
-import {
-  type Account,
-  type AccountBalance,
-  LOAN_KINDS,
-  type Paise,
-  addPaise,
-  maxPaise,
-  subtractPaise,
-} from "@/domain";
+import type { AccountBalance } from "./balances";
+import { type Paise, addPaise, maxPaise, subtractPaise } from "./money";
+import { type Account, LOAN_KINDS } from "./schemas";
 
 export interface NetPositionParts {
   inWalletsPaise: Paise;

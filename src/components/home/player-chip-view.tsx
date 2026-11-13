@@ -5,23 +5,12 @@ import { Check, ChevronRight } from "lucide-react";
 
 import { useLiveStatus, useRewardFeedback } from "@/components/feedback/reward-feedback";
 import { Panel } from "@/components/layout/primitives";
+import { RankEmblem } from "@/components/rewards/emblems";
 import type { PlayerStatus } from "@/lib/rewards/feedback";
 import type { TodayMission } from "@/lib/rewards/status";
 
-/** The small level mark: the level number in an engraved square. */
-function LevelMark({ level }: { level: number }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="flex size-6 shrink-0 items-center justify-center rounded-md border border-(--metal-line) bg-(--level-mark-bg) type-caption font-semibold text-(--level-mark-fg) money"
-    >
-      {level}
-    </span>
-  );
-}
-
 /**
- * The sidebar's slim level line: level mark, level and rank, a thin XP bar. It starts from the
+ * The sidebar's slim level line: the small rank emblem, level and rank, a thin XP bar. It starts from the
  * server's stored status and follows the newer one a save brings back.
  */
 export function PlayerChipView({ initial }: { initial: PlayerStatus }) {
@@ -34,7 +23,7 @@ export function PlayerChipView({ initial }: { initial: PlayerStatus }) {
       data-testid="sidebar-player-chip"
       className="flex h-10 items-center gap-2.5 rounded-lg px-2 outline-none hover:bg-sidebar-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:h-11"
     >
-      <LevelMark level={status.level} />
+      <RankEmblem rank={status.rank} size={24} />
       <span className="min-w-0 flex-1 truncate type-caption">
         <span className="font-semibold">Level {status.level}</span>
         <span className="text-text-tertiary"> · </span>
@@ -77,10 +66,10 @@ export function ProgressStripView({
       className="flex-row items-center gap-3 py-3 transition-colors duration-(--duration-quick) outline-none hover:bg-accent/40 focus-visible:ring-[3px] focus-visible:ring-ring/50"
     >
       <Link href="/rewards/status" data-testid="player-chip">
+        <RankEmblem rank={status.rank} size={32} />
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="flex min-w-0 items-center gap-2 type-body">
-            <span className="flex items-center gap-2 lg:hidden">
-              <LevelMark level={status.level} />
+            <span className="flex shrink-0 items-center gap-2 whitespace-nowrap lg:hidden">
               <span className="font-semibold">Level {status.level}</span>
               <span className="text-rank">{status.rank}</span>
               <span className="text-text-tertiary" aria-hidden="true">

@@ -525,3 +525,86 @@ the empty state repeated a "Type it" button that sits right above it (removed); 
 no-income-date arrow drifted away from "Add it" (kept with its words). Also found: a new account's
 profile theme is "dark" by default and wins over the browser's, so the first light screenshots of
 the empty account were dark; the light shots now use accounts set to "system".
+
+---
+
+## V2 — Phase 3C: rank emblems and Player status (2026-11-13)
+
+### Emblems (direction 3, "Sigil", revised; your choice)
+
+`src/components/rewards/emblems.tsx`, inline SVG on a 240 grid, colours only from `--emblem-*`
+tokens (dark metals in the dark theme and on the deep band via `.progression-deep`; darker metal on
+a light well on light surfaces). **RankEmblem:** the logo's pulse line cut into a metal diamond lit
+from the top left, one violet dot at the end of the pulse. Each rank adds one 1 px hairline layer:
+Tracker an outer diamond frame, Planner an engraved inner line, Strategist a thin ring, Steward
+turns the inner line bronze. No second square, no star. At 32 px and below a simpler drawing with
+thicker lines (Planner adds the frame, Strategist the ring, Steward a bronze well edge).
+**AchievementBadge:** a cut metal hexagon with one engraved line glyph per catalog achievement
+(ledger lines with a tick, seven marks, four filled cells, a mark dropping into a tray, bars under a
+limit line, a lens, a week frame with a tick) and a violet dot; locked is a dim outline with no fill
+and no accent. Both take a `label` for an accessible name, or are hidden where the text beside them
+already says it.
+
+### Player status — composition (written before coding)
+
+- **Dominant element:** one deep band (`.progression-deep`, edge to edge of the content column;
+  full bleed on phones, 18 px radius on laptops) holding the rank emblem with the XP ring around it,
+  centred. It is the brightest and largest thing on the page and fills about 60 % of the first
+  laptop screen.
+- **Emblem and ring:** the XP ring is a 3 px circle 296 px across on laptops and 172 px on phones;
+  the emblem is drawn in a box 89 % of that (264 / 153 px), so its diamond is about 200 px wide on
+  laptops and Strategist's and Steward's own thin ring sits about 20 px inside the XP ring (changed
+  while building: a 240 px box left a 50 px gap that read as loose). Concentric with it, a faint
+  track, four small tick marks at the quarters, the fill in the emblem accent violet starting at 12
+  o'clock. It is the only strong violet on the page. It fills once on load (600 ms, ease-out);
+  reduced motion shows it full at once.
+- **Depth:** three layers, no glow on the emblem: the near-black progression base with darker
+  corners (`--progression-band-bg`); a halo centred exactly on the emblem (`--progression-halo`: one
+  very soft light and the fine contour-ring pattern, masked so it fades out toward the edges). One 1 px highlight on
+  the band's top edge. No blur, no glass.
+- **Typography under the emblem:** a spaced uppercase label "RANK" (`type-label`, muted), the rank
+  name at 56 px on laptops / 36 px on phones (semibold, tight tracking, the only large text), then one
+  tabular line "Level 2 · 5 / 200 XP" and one quieter line "195 XP to level 3" (a new account: "Your
+  first logged day earns 10 XP" with a quiet Quick add link).
+- **Below the band:** one quiet row of figures with hairline dividers (current streak, longest
+  streak, lifetime XP), one calm line about streaks, then Milestones as hairline rows with a small
+  emblem or badge and the day, shown only when there is at least one.
+- **Removed:** the bordered status card with the level in a small square and the flat progress bar;
+  the three stat boxes and their stock icons; the empty Milestones box (an empty list is now simply
+  absent: the band already says how to start).
+- **Light theme:** the band stays deep (a header band, not a dark page); everything under it is the
+  light finance surface. **Phone:** the band bleeds to the screen edges, emblem 136 px, rank name
+  36 px, the figures in a 2-column grid.
+- **Elsewhere:** the sidebar level line and Home's progress strip use the 24 / 32 px RankEmblem in
+  place of the numbered square.
+
+### Screen review — Player status (a level-2 account with progress and milestones, `accounts`; a
+level-1 account with nothing yet, `report`). 375 and 1440 px, dark and light, plus Home's strip.
+Screenshots in `doc/screens/3C/` (`*-round1.png`, `*-round2.png` before the fixes; duplicates of a
+final image were removed).
+
+1. *One dominant element in the first second?* Yes: the band with the emblem and ring, about 60 % of
+   the first laptop screen (543 of 900 px), the brightest object and the only large type (the rank
+   name).
+2. *Bordered boxes at once (desktop)?* None besides the band itself, which has no border (a 1 px top
+   highlight only). The figures are a hairline-divided row; milestones are hairline rows.
+3. *Template without the logo?* No: the emblem is the logo's own pulse line cut in metal, and the
+   ring, contour halo and spaced RANK label are this product's progression language.
+4. *Anything from "must not look like"?* No glow, gradient fills, stars, gems, confetti or pressure
+   wording. Violet: the ring fill and the emblem's dot only (plus the shell's Add button and active
+   nav item).
+5. *Same tokens as finished screens?* Yes: `PageHeader` with the Player tabs, `StatRow`/`Stat`,
+   `Section`/`DataList`/`DataRow` from 3A, `type-label`, the progression tokens; one new type role
+   (`type-rank`, 36 / 56 px) and the `--emblem-*` tokens. Compared side by side with Home (3B).
+6. *Phone designed, light deliberate?* At 375 px the band bleeds to the screen edges, the ring is
+   172 px, the figures sit in one three-column row. In light the band stays deep under the light
+   page header (the Part A header band), and the 24 / 32 px emblems switch to darker metal on a light
+   well.
+
+**Fix rounds.** Round 1 → 2: the soft light and the contour rings were centred at the token's fixed
+50 % / 42 % of the band, so on phones they were visibly not concentric with the emblem (now one
+halo layer centred on the ring); Lifetime XP sat alone on a second row on phones (one row of
+three); the Quick add link's 44 px target pushed the level-1 line apart (negative margin, target
+kept). Round 2 → 3: on phones the two-line labels ("Current / streak") left Lifetime XP's figure
+higher than the others (bottom-aligned). Home round 1 → final: the 32 px emblem in the strip pushed
+"Level 2" onto two lines at 375 px (level and rank kept on one line; the streak text truncates).

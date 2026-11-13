@@ -193,6 +193,20 @@ test(
     await expect(
       main(page).getByRole("heading", { name: "Player status", exact: true }),
     ).toBeVisible();
+
+    // One band: the rank emblem inside the XP ring, the rank name and the level line, which the
+    // ring's value matches. No empty Milestones box.
+    const rank = (await main(page).getByTestId("reward-rank").textContent()) ?? "";
+    await expect(main(page).getByRole("img", { name: `${rank} rank emblem` })).toBeVisible();
+    const [, level, into, span] =
+      /^Level (\d+) · (\d+) \/ (\d+) XP$/.exec(
+        (await main(page).getByTestId("reward-level").textContent()) ?? "",
+      ) ?? [];
+    const ring = main(page).getByRole("progressbar", {
+      name: `XP towards level ${Number(level) + 1}`,
+    });
+    await expect(ring).toHaveAttribute("aria-valuetext", `${into} of ${span} XP`);
+    await expect(main(page)).not.toContainText("No milestones yet");
   },
 );
 

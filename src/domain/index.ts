@@ -32,4 +32,5 @@ export * from "./report-export";
 export * from "./rewards";
 export * from "./reminders";
 export * from "./accounts";
+export * from "./net-position";
 export * from "./reconciliation";
