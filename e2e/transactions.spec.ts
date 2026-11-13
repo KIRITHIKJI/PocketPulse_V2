@@ -112,8 +112,18 @@ test(
     await expect(card).toContainText("Tea");
     await expect(card).toContainText(`−${rupees(amount.paise)}`);
 
+    // A +XP note, when this save earned some, sits beside the Undo control and never over it.
+    const undo = toast(page).getByRole("button", { name: "Undo" });
+    const xpNote = toast(page).getByTestId("toast-xp");
+    if (await xpNote.isVisible()) {
+      const [n, u] = [(await xpNote.boundingBox())!, (await undo.boundingBox())!];
+      const overlaps =
+        n.x < u.x + u.width && u.x < n.x + n.width && n.y < u.y + u.height && u.y < n.y + n.height;
+      expect(overlaps).toBe(false);
+    }
+
     // Undo straight from the toast: the entry is removed and every figure goes back.
-    await toast(page).getByRole("button", { name: "Undo" }).click();
+    await undo.click();
     await expect(toast(page)).toContainText("Undone");
     await expect(main(page).getByTestId("home-balance")).toHaveAttribute(
       "data-paise",

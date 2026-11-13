@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { markWeekReviewed } from "@/lib/actions/rewards";
 
 /** "I've reviewed this week": the server records it, and the ladder shows what it completed. */
-export function ReviewWeekButton() {
+export function ReviewWeekButton({ className }: { className?: string }) {
   const { present } = useRewardFeedback();
   const { show } = useToast();
   const [pending, start] = React.useTransition();
@@ -16,6 +16,7 @@ export function ReviewWeekButton() {
     <Button
       size="sm"
       variant="outline"
+      className={className}
       loading={pending}
       onClick={() =>
         start(async () => {

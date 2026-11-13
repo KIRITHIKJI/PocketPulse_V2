@@ -608,3 +608,114 @@ three); the Quick add link's 44 px target pushed the level-1 line apart (negativ
 kept). Round 2 → 3: on phones the two-line labels ("Current / streak") left Lifetime XP's figure
 higher than the others (bottom-aligned). Home round 1 → final: the 32 px emblem in the strip pushed
 "Level 2" onto two lines at 375 px (level and rank kept on one line; the streak text truncates).
+
+---
+
+## V2 — Phase 3D: Missions, Achievements, Rewards and the feedback moments (2026-11-13)
+
+All three screens are siblings of Player status: the same deep band (`DeepBand`, extracted from
+`RankBand` in `src/components/rewards/rank-band.tsx`, with the same `Halo`), the `--emblem-*`
+metals, `type-label` over one large line, figures and lists in hairline rows under the band, and
+violet only on progress. Each screen has one dominant visual and fewer elements than before.
+
+### Missions — composition (written before coding)
+
+- **Dominant element:** the current objective in the deep band: the open mission closest to done
+  (ties: daily, then weekly, then long-term, then catalog order). Its glyph is large (112 / 176
+  px) in a round engraved frame with the halo behind it; "CURRENT OBJECTIVE · DAILY", the title
+  (`type-display`), one line of description, a thin violet bar with "1 of 20" for counted
+  missions, the reward as an engraved tag ("+40 XP"), one main action, and the overflow menu.
+- **Secondary:** a journal under the band (max 3xl wide): Daily, Weekly, Long-term as small
+  uppercase labels with "x of y done · Resets at midnight" on one hairline. Entries hang on a thin
+  vertical rail; each has its 40 px glyph on the rail, the title, one line of description, the
+  engraved XP tag on the right, the one action, and "⋯" holding Skip.
+- **States:** active (progress started) cut metal at full contrast; not started an outlined frame;
+  done dimmed metal with a small engraved seal and a quiet "Completed"; skipped a faint outline,
+  "· Skipped" and Bring back.
+- **Removed or moved:** the three checklist columns (and the phone segmented control that switched
+  between them); the checkbox circles; "Skip" as a visible text button (now in the overflow menu);
+  each group's outlined box; the 4-mission list on the Rewards hub (missions live here only).
+- **New glyphs:** `MissionGlyph` in `emblems.tsx`, one engraved line drawing per catalog mission
+  (a page being written, the day on the horizon, sorted cells, a week's frame, a mark lowered into
+  a tray, a flag, steps, layers). Ranks are diamonds, achievements hexagons, missions round.
+- **Empty states:** "No missions yet" (none available) and "All caught up" (every open mission done
+  or skipped) in the band; a group whose missions are all skipped says so in one line.
+
+### Achievements — composition (written before coding)
+
+- **Dominant element:** the collection inside the deep band: "COLLECTION", the count as the page's
+  main number ("1 of 7", `type-rank`, the "of 7" muted), then the badges, 80 / 112 px, three per
+  row on phones and four from `sm`, each with only its name under it. Locked badges are the dim
+  outline from 3C.
+- **Opening a badge** (a real dialog; a bottom sheet on phones): the name, what earns it, the badge
+  at 160 px on a deep well, then "Unlocked Today · +50 XP" or its progress and "50 XP when
+  unlocked".
+- **Removed:** descriptions, XP and progress lines in the grid; the outlined card per achievement;
+  the stock lock and trophy icons; the four filter chips (the `?show=` URL still opens the page).
+- **Empty state:** "No achievements yet" in the band when the catalog is empty; with none unlocked
+  the count reads "0 of 7" with "None yet. Open a badge to see what earns it."
+
+### Rewards — composition (written before coding)
+
+- **Dominant element:** the inventory in the deep band: "EARNED SO FAR", lifetime XP as the large
+  figure, "Level 2 · 1 achievement", then the shelf of what is held: every rank reached after
+  Starter and every unlocked achievement, newest first, each with its day; last, the next rank as
+  the one item not yet owned (dimmed, "Next: Tracker", "At level 3"); a quiet "6 achievements
+  still to find" link.
+- **Secondary:** "This week" (logged days as seven small diamonds, no boxes) and the XP log as
+  hairline rows; how XP works sits behind one info icon.
+- **No shop cues:** no prices, no "Claim", no timers, no dots, no "buy".
+- **Removed or moved:** the status card (it is Player status), the week box, the missions box (on
+  Missions), the newest-achievements cards (in the inventory), the explanatory paragraph (behind
+  the info icon), the XP-history box.
+- **Empty state:** "Nothing earned yet. Your first logged day earns 10 XP." with Quick add, and the
+  next rank shown as not yet owned.
+
+### Feedback moments
+
+- **Logging an entry:** the save's confirmation carries one small "+10 XP · Logged today" line
+  under its message; it fades after 4 s while the toast and its Undo stay, and keeps its height so
+  Undo never moves. If the confirmation is already gone, the note is a small pill that can't be
+  tapped (3 s), so it never sits in the way of the next entry.
+- **Mission completed:** no pop-up. Its XP joins the same note ("+15 XP · Logged today · Log today
+  done"); the mark is the sealed glyph on Missions and the done state on Home's strip.
+- **Level up:** the deep panel rises and the new rank emblem reveals once (280 ms each), with the
+  rank name, "Level 3 · 10 / 300 XP" and Continue. Dismissible by Continue, Escape or a tap outside.
+  Recorded per device when it shows (`pp-level-seen`), so the same level never shows twice, even
+  after an Undo and a re-add; an Undo before it showed doesn't use it up.
+- Achievement unlocks keep their existing single toast. Reduced motion: no rise, no reveal, no
+  fade; no confetti, no full-screen animation, no sound anywhere.
+
+### Screen review — Missions, Achievements, Rewards (with data: `accounts`, level 2, 105 XP, one
+achievement, three missions done; empty: `report`, level 1, 0 XP). 375 and 1440 px, dark and light,
+each compared with Player status. Screenshots in `doc/screens/3D/` (`*-round1.png` before the
+fixes, the rest after; `achievement-open-*`, `missions-menu-*`, `level-up-*`, `xp-note-pill-*`).
+
+1. *One dominant element in the first second?* Yes on all three: the deep band, the only dark and
+   largest object, holding the current objective, the collection count with its badges, or the XP
+   earned with the shelf of what is held.
+2. *Bordered boxes at once (desktop)?* None besides the band (no border, a 1 px top highlight). The
+   XP tags are small engraved labels, not boxes; journal entries, the week and the XP log are rows.
+3. *Template without the logo?* No: the round mission glyphs, hexagon badges and diamond rank
+   emblems are this product's own metal drawings; the rail journal and engraved tags belong to the
+   same language as the XP ring.
+4. *Anything from "must not look like"?* No prices, Claim buttons, timers, red dots, chests, glow
+   or confetti (an e2e test now asserts no shop words on Rewards). Violet: the objective's bar and
+   the emblems' small dots only, plus the shell's Add button and active item.
+5. *Same tokens as finished screens?* Yes: `DeepBand`/`Halo` are Player status's own band, now
+   shared; `type-label`, `type-rank`, `type-display`, `--emblem-*`, `Section`/`DataList`.
+6. *Phone designed, light deliberate?* At 375 px the bands bleed to the edges, the objective
+   stacks (glyph, title, bar, tag + action + menu), badges sit three to a row, journal actions drop
+   under the text. In light the bands stay deep under the light header; the rest is the light
+   finance surface with darker metal glyphs.
+
+**Fix round (round 1 → final).** Missions: each journal entry put its action on a line of its own,
+mostly empty on laptops (now the tag and the actions stack on the right beside the text; phones
+keep the actions under it); the objective's glyph and text hugged the band's left edge, leaving
+its right 40 % empty (now centred as one group). Rewards: a hairline sat directly under the band
+(removed for the first section); the unlogged week diamonds almost vanished in light (now a
+half-strength metal outline); the empty-state line was full-white body text, louder than the figure
+above it (muted). Achievements: with 7 badges the last row of 3 hung left on laptops (rows now
+centred). Level-up: checked on a real level-up (see PROGRESS); no fix needed. The `motion`
+account's saved theme is "dark", which wins over the browser, so its "light" level-up shots render
+dark; the panel is deep in both themes by design.

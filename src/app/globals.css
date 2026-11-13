@@ -763,6 +763,30 @@ html[data-motion="reduce"] .pp-celebrate-piece {
   animation: pp-level-rise var(--duration-emphasis) var(--ease-out) both;
 }
 
+/* The level-up moment's new rank emblem: revealed once, just after its panel rises. */
+@keyframes pp-emblem-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+    filter: brightness(1.6);
+  }
+}
+
+.pp-emblem-reveal {
+  animation: pp-emblem-reveal var(--duration-emphasis) var(--ease-out) 120ms both;
+}
+
+/* Reduced motion: the emblem is simply there, with no wait before it either. */
+@media (prefers-reduced-motion: reduce) {
+  html:not([data-motion="full"]) .pp-emblem-reveal {
+    animation-delay: 0s;
+  }
+}
+
+html[data-motion="reduce"] .pp-emblem-reveal {
+  animation-delay: 0s;
+}
+
 /* The XP ring on Player status fills once, from empty to its value (reduced motion: at once). */
 @keyframes pp-xp-ring {
   from {

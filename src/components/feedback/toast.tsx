@@ -74,7 +74,9 @@ const loadLevelUp = lazyModule(() => import("@/components/feedback/level-up"));
 
 const VISIBLE_MS = 8_000;
 const MILESTONE_VISIBLE_MS = 10_000;
-const PROGRESS_VISIBLE_MS = 4_000;
+const PROGRESS_VISIBLE_MS = 3_000;
+/** The +XP note on a save's confirmation fades after this; the Undo beside it stays. */
+const NOTE_VISIBLE_MS = 4_000;
 /** From the third routine toast within this window, routine toasts go quiet. */
 const ROUTINE_WINDOW_MS = 2 * 60_000;
 const ROUTINE_QUIET_AFTER = 2;
@@ -228,6 +230,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       : null;
   const tone = toast ? TONES[toast.tone] : null;
   const Icon = tone?.icon;
+  // An XP note on its own (its save's confirmation already gone): a small pill that can't be
+  // tapped, so it never sits in the way of the next entry.
+  const xpOnly = current?.kind === "reward" && toast?.tone === "progress";
+
+  const noteId = current?.kind === "action" && current.note ? current.id : null;
+  const [fadedNote, setFadedNote] = React.useState<number | null>(null);
+  React.useEffect(() => {
+    if (noteId === null) return;
+    const timer = window.setTimeout(() => setFadedNote(noteId), NOTE_VISIBLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [noteId]);
 
   // The level-up moment's code arrives after the page is up. In the rare case it can't load at
   // all, the moment is skipped so the rest of the queue still shows.
@@ -256,7 +269,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         aria-live="polite"
         className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4 lg:right-6 lg:bottom-6 lg:left-auto lg:justify-end"
       >
-        {toast && tone && Icon && current && (
+        {toast && xpOnly && current && (
+          <p
+            key={current.id}
+            data-testid="toast"
+            data-tone="progress"
+            data-quiet
+            className="pointer-events-none animate-in rounded-full border border-progress-xp/35 bg-(--toast-bg) px-3 py-1.5 type-caption text-progress-xp money shadow-(--surface-overlay-shadow) duration-200 fade-in-0"
+          >
+            {toast.message}
+          </p>
+        )}
+        {toast && !xpOnly && tone && Icon && current && (
           <div
             key={current.id}
             data-testid="toast"
@@ -286,7 +310,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               {toast.title ? <p className="font-medium">{toast.title}</p> : null}
               <p className={cn(toast.title && "text-muted-foreground")}>{toast.message}</p>
               {toast.note ? (
-                <p className="type-caption text-progress-xp" data-testid="toast-xp">
+                <p
+                  className={cn(
+                    "type-caption text-progress-xp money transition-opacity duration-(--duration-standard)",
+                    fadedNote === current.id && "opacity-0",
+                  )}
+                  data-testid="toast-xp"
+                >
                   {toast.note}
                 </p>
               ) : null}

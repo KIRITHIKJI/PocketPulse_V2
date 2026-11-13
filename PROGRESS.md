@@ -450,6 +450,81 @@ shell (pre-existing). `AchievementBadge` reaches the Achievements, Missions and 
 3D. The progression visual language for 3D: the deep band with its centred halo, the 3 px ring,
 `type-label` over `type-rank`, figures in hairline rows under the band, violet only on progress.
 
+### Phase 3D — Missions, Achievements, Rewards and the feedback moments (2026-11-13) ✅
+
+No money logic, domain, migration or schema change, and no XP, level, streak, mission or
+achievement rule change. Diff check: nothing under `src/domain`, `src/lib` (incl.
+`src/lib/rewards`), `supabase`, `src/app/api`, `package.json` or the lockfile. No new dependency.
+
+- **Shared band:** `DeepBand` and `Halo` extracted from Player status's `RankBand`
+  (`rank-band.tsx`, same classes, Player status unchanged) and used by all three screens.
+- **Missions** (composition and review in `doc/DESIGN_PLAN.md`, V2 Phase 3D): the current objective
+  (open mission closest to done; ties daily → weekly → long-term → catalog order) leads in the
+  band with a large `MissionGlyph` (new in `emblems.tsx`, one engraved drawing per catalog
+  mission, round frame), its bar, an engraved "+N XP" tag, one action and a "⋯" menu. The rest are
+  journal entries on a rail under Daily / Weekly / Long-term ("x of y done · resets"). Skip moved
+  into the overflow menu (`mission-menu.tsx`; the Radix dropdown already in the app; the same
+  `changeQuest` action). Done = dimmed glyph with a seal + "Completed". The three columns, the phone
+  segmented control (`missions-board.tsx`, deleted) and the checkbox circles are gone. Empty states:
+  "No missions yet", "All caught up", "All skipped".
+- **Achievements:** the collection in the band: "1 of 7" as the main number, 80 / 112 px
+  `AchievementBadge`s with names only; a badge opens a dialog with its description, the badge at
+  160 px, and the day unlocked + XP or its progress. Filter chips removed (`?show=` still loads).
+- **Rewards:** the inventory: lifetime XP, ranks reached after Starter and unlocked achievements
+  (newest first, dated), the next rank dimmed as not yet owned, "N achievements still to find";
+  then This week (seven small diamonds, `week-strip.tsx`) and the XP log as rows; how XP works
+  behind an info icon. The status card, missions box and newest-achievement cards moved to their
+  own tabs. No prices, claim, timers or dots.
+- **Feedback moments:** a save's +XP note sits under its message in the confirmation, fades after
+  4 s keeping its height (Undo never moves), and is a non-tappable 3 s pill when the confirmation
+  has gone. A completed mission no longer pops up: its XP and "<title> done" join the note. Level
+  up: the deep panel with the new rank emblem revealed once (`pp-emblem-reveal`, 280 ms, none under
+  reduced motion), rank, level line, Continue; recorded per device when shown (`pp-level-seen` in
+  localStorage, session memory if storage is blocked), so the same level never shows twice; an Undo
+  before it showed doesn't use it up. Achievement unlock toast unchanged. No confetti, sound or
+  full-screen animation.
+- **Reward figures, before vs after** (old build `e2d5fc1` and the new one, same evening, 8 test
+  accounts: `user`, `rewards`, `accounts`, `motion`, `plan`, `transactions`, `report`, `insights`;
+  levels 1–2, 0–105 XP, 0–1 of 7 achievements): lifetime XP, the week, every XP log row, every
+  mission's state / XP / progress / to-sort hint, every achievement's state / XP / progress / day
+  (read from the opened badge), the unlocked count, and Player status's rank, level, XP to next,
+  streaks: **identical on all 8**. Scripts in `test-results/3d/` (gitignored).
+- **Real level-up checked** on the `motion` test account (test data touched): opening today's
+  breakdown (shown as the pill "+5 XP · Look at today done") and "I’ve reviewed this week" took it
+  from 80 to 140 XP; the moment showed once ("Starter · Level 2 · 40 / 200 XP"), stored
+  `pp-level-seen = 2`, and didn't show again on a revisit.
+- **Tests changed (none weakened, no timeout raised):** `e2e/rewards.spec.ts`: unlocked XP read
+  from each badge's `data-xp` (the grid no longer prints it); the XP page waits for "Earned so far";
+  the skip test opens the overflow menu (and now also asserts Skip is not a visible button, the
+  skipped state, and every group visible at both sizes); the weekly review is done on Missions; new
+  test: collection count = unlocked badges, a badge opens with a description not shown in the grid,
+  Rewards has no shop words. `e2e/motion.spec.ts` also measures `pp-emblem-reveal`. Journey A
+  asserts the +XP note never overlaps Undo. Unit: `feedback-queue.test.tsx` (mission in the note,
+  never its own pop-up; level shown once; Undo before showing; the pill) and
+  `mission-row.test.tsx` (Skip only in the menu, seal, objective choice).
+
+**Checks (final code, this machine):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 77 s |
+| `npm run typecheck` | ✅ | 6 s |
+| `npm test` | ✅ 41 files / 981 tests (was 973) | 25 s |
+| `npm run build` | ✅ | 38 s |
+| `npm run test:smoke` | ✅ 49 passed | 4.3 min incl. build |
+| While working: a11y `/rewards*` (dark + light, desktop + mobile) | ✅ 32 passed | 25 s |
+| While working: rewards spec (both sizes), motion reward checks, Journey A (both sizes) | ✅ 30 passed (incl. sign-ins) | 60 s |
+| DB tests / full e2e | not run (no DB code changed; full suite not asked for) | — |
+
+**Sizes** (`scripts/route-js.mjs`, gzip KB, before = `e2d5fc1`): `/rewards` 188 → **173**,
+`/rewards/achievements` 188 → 186, `/rewards/missions` 195 → **208** (+13, +6.7 %: the Radix
+dropdown for the overflow menu; 33 KB above the shell, under the 70 KB rule), `/rewards/status`
+172 → 173, shell (`/settings/data`) 174 → 175; 27 other routes +1 (shared toast/feedback chunk).
+
+**Open:** "No missions yet" and "No achievements yet" can't be reached with the real catalog, so
+they are built but not screenshotted. The motion test account's theme is saved as dark, so the
+level-up's light shots render dark. Missions grew 13 KB (reason above).
+
 ### Checklist for Phases 2–6
 
 **Phase 2A — faster tests (test infrastructure only)**
@@ -482,7 +557,7 @@ shell (pre-existing). `AchievementBadge` reaches the Achievements, Missions and 
 - [x] 3A tokens, primitives, 8-link sidebar, Add sheet, hubs, mobile bar
 - [x] 3B Home
 - [x] 3C emblem directions (your choice: Sigil, revised), RankEmblem/AchievementBadge, Player status (your approval)
-- [ ] 3D Missions, Achievements, Rewards, feedback moments
+- [x] 3D Missions, Achievements, Rewards, feedback moments
 - [ ] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring
 - [ ] 3F Transactions, Accounts, Categories, Reports, Reminders, Settings, auth, onboarding; mobile
       and consistency passes

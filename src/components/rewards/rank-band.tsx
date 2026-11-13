@@ -1,7 +1,39 @@
+import * as React from "react";
 import Link from "next/link";
 
 import { RankEmblem } from "@/components/rewards/emblems";
 import type { PlayerStatus } from "@/lib/rewards/feedback";
+import { cn } from "@/lib/utils";
+
+/**
+ * The deep progression band every Player screen leads with: near-black base with darker corners,
+ * a 1 px top highlight, edge to edge on phones and rounded on laptops. Stays deep in the light
+ * theme (a header band, not a dark page); `.progression-deep` switches emblems to dark metals.
+ */
+export function DeepBand({ className, ...props }: React.ComponentProps<"section">) {
+  return (
+    <section
+      className={cn(
+        "progression-deep relative -mx-4 overflow-hidden px-4 text-(--progression-text) shadow-[inset_0_1px_0_0_var(--progression-edge)] [background:var(--progression-band-bg)] sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-2xl",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
+/** The soft light and contour rings, centred on whatever positioned box it sits in. */
+export function Halo({ className }: { className?: string }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 [mask-image:radial-gradient(closest-side,black_30%,transparent)] [background:var(--progression-halo)]",
+        className,
+      )}
+    />
+  );
+}
 
 const QUARTERS = [0, 90, 180, 270];
 
@@ -64,9 +96,9 @@ export function RankBand({ status }: { status: PlayerStatus }) {
   const fresh = status.xp === 0;
   const next = status.level + 1;
   return (
-    <section
+    <DeepBand
       aria-labelledby="player-rank"
-      className="progression-deep relative -mx-4 flex flex-col items-center overflow-hidden px-4 pt-10 pb-9 text-(--progression-text) shadow-[inset_0_1px_0_0_var(--progression-edge)] [background:var(--progression-band-bg)] sm:-mx-6 sm:px-6 lg:mx-0 lg:rounded-2xl lg:pt-12 lg:pb-11"
+      className="flex flex-col items-center pt-10 pb-9 lg:pt-12 lg:pb-11"
     >
       <div
         role="progressbar"
@@ -77,10 +109,7 @@ export function RankBand({ status }: { status: PlayerStatus }) {
         aria-valuetext={`${status.levelXp} of ${status.levelSpan} XP`}
         className="relative size-[172px] lg:size-[296px]"
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-1/2 size-[44rem] -translate-1/2 [mask-image:radial-gradient(closest-side,black_30%,transparent)] [background:var(--progression-halo)] lg:size-[64rem]"
-        />
+        <Halo className="size-[44rem] lg:size-[64rem]" />
         <XpRing status={status} />
         <RankEmblem
           rank={status.rank}
@@ -120,6 +149,6 @@ export function RankBand({ status }: { status: PlayerStatus }) {
           </>
         )}
       </p>
-    </section>
+    </DeepBand>
   );
 }

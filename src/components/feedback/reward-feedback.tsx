@@ -24,6 +24,31 @@ export function markAchievementsSeen(codes: readonly string[]) {
   }
 }
 
+/** The highest level whose moment this device has shown. */
+export const LEVEL_SEEN_KEY = "pp-level-seen";
+/** Only when storage is blocked: this session's memory of the levels shown. */
+let levelShownThisSession = 0;
+
+function levelSeen(): number {
+  try {
+    return Number(window.localStorage.getItem(LEVEL_SEEN_KEY)) || 0;
+  } catch {
+    return levelShownThisSession;
+  }
+}
+
+/**
+ * Called by the level-up moment once it is on screen. A level reached again (after an Undo took
+ * the XP back, or from another sync) never shows twice on this device.
+ */
+export function markLevelSeen(level: number) {
+  try {
+    if (level > levelSeen()) window.localStorage.setItem(LEVEL_SEEN_KEY, String(level));
+  } catch {
+    levelShownThisSession = Math.max(levelShownThisSession, level);
+  }
+}
+
 type RewardFeedbackValue = {
   /** Progress features are on (Settings). When off, rewards still sync but nothing pops up. */
   enabled: boolean;
@@ -75,14 +100,20 @@ export function RewardFeedbackProvider({
       }
       if (!enabled || !hasFeedback(feedback)) return;
 
+      // One small note: the XP this save earned, a mission it completed (a quiet mark, never a
+      // pop-up of its own), or a counted mission's step.
+      const missions = feedback.missionsCompleted;
+      const xp = feedback.routineXp + missions.reduce((sum, m) => sum + m.xp, 0);
       const parts: string[] = [];
-      if (feedback.routineXp > 0) {
+      if (xp > 0) {
         const at = Date.now();
         const recent = xpTimes.current.filter((t) => at - t < XP_QUIET_WINDOW_MS);
         xpTimes.current = [...recent, at];
         const quiet = recent.length >= XP_QUIET_AFTER;
-        parts.push(`+${feedback.routineXp} XP`);
-        if (!quiet) parts.push(...feedback.routineReasons);
+        parts.push(`+${xp} XP`);
+        if (!quiet) {
+          parts.push(...feedback.routineReasons, ...missions.map((m) => `${m.title} done`));
+        }
       }
       const step = feedback.progress[0];
       if (step) parts.push(`${step.title} ${step.progress} of ${step.target}`);
@@ -92,20 +123,6 @@ export function RewardFeedbackProvider({
         else reward("progress", { tone: "progress", message: text });
       }
 
-      const missions = feedback.missionsCompleted;
-      if (missions.length > 0) {
-        const xp = missions.reduce((sum, m) => sum + m.xp, 0);
-        reward(
-          "mission",
-          {
-            tone: "milestone",
-            title:
-              missions.length === 1 ? "Mission complete" : `${missions.length} missions complete`,
-            message: `${missions.map((m) => m.title).join(", ")} · +${xp} XP`,
-          },
-          sourceId,
-        );
-      }
       const unlocked = feedback.achievements;
       if (unlocked.length > 0) {
         markAchievementsSeen(unlocked.map((a) => a.code));
@@ -126,7 +143,7 @@ export function RewardFeedbackProvider({
           sourceId,
         );
       }
-      if (feedback.levelUp) {
+      if (feedback.levelUp && feedback.levelUp.to > levelSeen()) {
         const { levelXp, levelSpan, progressBp } = feedback.status;
         reward(
           "level",

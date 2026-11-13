@@ -170,14 +170,14 @@ async function celebrate(page: Page) {
 }
 
 /**
- * How long the milestone ring and the level-up rise run on this page, in seconds. Elements with
+ * How long the milestone ring, the level-up rise and its emblem reveal run on this page, in seconds. Elements with
  * the real classes are added to the real page, so this reads the app's own CSS and motion setting.
  */
 async function milestoneMotion(page: Page) {
   await page.goto("/rewards");
   await expect(main(page).getByTestId("reward-xp")).toBeVisible();
   return page.evaluate(() =>
-    ["pp-milestone-ring", "pp-level-rise", "pp-dim-in"].map((name) => {
+    ["pp-milestone-ring", "pp-level-rise", "pp-dim-in", "pp-emblem-reveal"].map((name) => {
       const el = document.createElement("span");
       el.className = name;
       document.body.append(el);

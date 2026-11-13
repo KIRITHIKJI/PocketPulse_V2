@@ -1,7 +1,11 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { RewardFeedbackProvider, useRewardFeedback } from "@/components/feedback/reward-feedback";
+import {
+  LEVEL_SEEN_KEY,
+  RewardFeedbackProvider,
+  useRewardFeedback,
+} from "@/components/feedback/reward-feedback";
 import { ToastProvider, useToast } from "@/components/feedback/toast";
 import {
   type QueueState,
@@ -155,7 +159,7 @@ const feedback = (over: Partial<RewardFeedback> = {}): RewardFeedback => ({
 
 function Harness() {
   const { show } = useToast();
-  const { afterSave, afterRemoval } = useRewardFeedback();
+  const { afterSave, afterRemoval, present } = useRewardFeedback();
   return (
     <>
       <button
@@ -167,6 +171,13 @@ function Harness() {
         save
       </button>
       <button onClick={() => afterRemoval("op1", undefined)}>undo</button>
+      <button
+        onClick={() =>
+          present(feedback({ missionsCompleted: [], achievements: [], levelUp: null }))
+        }
+      >
+        review
+      </button>
     </>
   );
 }
@@ -175,7 +186,10 @@ function Harness() {
 const popUps = () => [...screen.queryAllByTestId("toast"), ...screen.queryAllByTestId("level-up")];
 
 describe("the feedback ladder on screen", () => {
-  beforeEach(() => syncRewardFeedback.mockReset());
+  beforeEach(() => {
+    syncRewardFeedback.mockReset();
+    window.localStorage.removeItem(LEVEL_SEEN_KEY);
+  });
 
   function mount(enabled = true) {
     return render(
@@ -187,37 +201,84 @@ describe("the feedback ladder on screen", () => {
     );
   }
 
-  it("save → XP line → mission → achievement → level-up, never two at once", async () => {
+  it("save → XP note (with the mission, no pop-up of its own) → achievement → level-up, never two at once", async () => {
     syncRewardFeedback.mockResolvedValue(feedback());
     const user = userEvent.setup();
     mount();
     await user.click(screen.getByRole("button", { name: "save" }));
     await act(async () => {});
 
-    // The confirmation carries the quiet XP line; nothing else is up.
+    // The confirmation carries the quiet XP note, the completed mission's XP and a quiet mark
+    // for it included; nothing else is up, and the Undo-bearing toast is the only one.
     expect(popUps()).toHaveLength(1);
     expect(screen.getByTestId("toast")).toHaveTextContent("Saved Tea");
-    expect(screen.getByTestId("toast-xp")).toHaveTextContent("+10 XP · Logged today");
+    expect(screen.getByTestId("toast-xp")).toHaveTextContent(
+      "+15 XP · Logged today · Log today done",
+    );
 
-    const order: string[] = [];
-    for (let i = 0; i < 2; i += 1) {
-      await user.click(screen.getByRole("button", { name: "Dismiss" }));
-      expect(popUps()).toHaveLength(1);
-      order.push(screen.getByTestId("toast").textContent ?? "");
-    }
-    expect(order[0]).toContain("Mission complete");
-    expect(order[0]).toContain("Log today · +5 XP");
-    expect(order[1]).toContain("Achievement unlocked");
-    expect(order[1]).toContain("First 10");
+    // A completed mission never pops up on its own: next comes the achievement.
+    await user.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(popUps()).toHaveLength(1);
+    const next = screen.getByTestId("toast").textContent ?? "";
+    expect(next).toContain("Achievement unlocked");
+    expect(next).toContain("First 10");
+    expect(next).not.toContain("Mission complete");
 
-    // The peak moment comes last, alone on screen, and waits for the person.
+    // The peak moment comes last, alone on screen, and waits for the person: the rank emblem
+    // revealed once, with the rank and the new level.
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(screen.queryByTestId("toast")).toBeNull();
     // Its code loads on first use (not with the shell), so wait for it to appear.
-    expect(await screen.findByTestId("level-up")).toHaveTextContent("Level 2");
+    const moment = await screen.findByTestId("level-up");
+    expect(moment).toHaveTextContent("Level 2");
+    expect(moment).toHaveTextContent("Starter");
+    expect(screen.getByRole("img", { name: "Starter rank emblem" })).toHaveClass(
+      "pp-emblem-reveal",
+    );
     expect(popUps()).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(popUps()).toHaveLength(0);
+  });
+
+  it("a level is revealed once: reaching it again (after an Undo) shows no second moment", async () => {
+    syncRewardFeedback.mockResolvedValue(feedback({ missionsCompleted: [], achievements: [] }));
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await act(async () => {});
+    await user.click(screen.getByRole("button", { name: "Dismiss" }));
+    await screen.findByTestId("level-up");
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    expect(window.localStorage.getItem(LEVEL_SEEN_KEY)).toBe("2");
+
+    // The same level reported again: the XP note shows, the moment doesn't.
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await act(async () => {});
+    expect(screen.getByTestId("toast-xp")).toHaveTextContent("+10 XP");
+    await user.click(screen.getByRole("button", { name: "Dismiss" }));
+    await act(async () => {});
+    expect(popUps()).toHaveLength(0);
+  });
+
+  it("an Undo before the moment showed doesn't use it up: the level shows when reached again", async () => {
+    let answer!: (f: RewardFeedback) => void;
+    syncRewardFeedback.mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await user.click(screen.getByRole("button", { name: "undo" }));
+    await act(async () => answer(feedback({ missionsCompleted: [], achievements: [] })));
+    expect(window.localStorage.getItem(LEVEL_SEEN_KEY)).toBeNull();
+  });
+
+  it("an XP note without a confirmation to join is a small pill that can't be tapped", async () => {
+    const user = userEvent.setup();
+    mount();
+    await user.click(screen.getByRole("button", { name: "review" }));
+    const pill = screen.getByTestId("toast");
+    expect(pill).toHaveTextContent("+10 XP · Logged today");
+    expect(pill).toHaveClass("pointer-events-none");
+    expect(pill.querySelector("button")).toBeNull();
   });
 
   it("the XP line gets quieter with repetition", async () => {

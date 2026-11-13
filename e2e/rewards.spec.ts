@@ -72,14 +72,15 @@ const popUps = async (page: Page) =>
 
 /** Unlocked achievements, which stay unlocked (with their XP) whatever happens to entries. */
 async function unlockedXp(page: Page) {
-  await page.goto("/rewards/achievements?show=unlocked");
+  await page.goto("/rewards/achievements");
   await expect(
     main(page).getByRole("heading", { name: "Achievements", exact: true }),
   ).toBeVisible();
+  await expect(main(page).getByTestId("achievement-count")).toBeVisible();
   const badges = main(page).locator('[data-testid="achievement"][data-state="unlocked"]');
   let sum = 0;
-  for (const text of await badges.allTextContents())
-    sum += Number(/\+(\d+) XP/.exec(text)?.[1] ?? 0);
+  for (const xp of await badges.evaluateAll((all) => all.map((b) => b.getAttribute("data-xp"))))
+    sum += Number(xp);
   return sum;
 }
 
@@ -108,7 +109,7 @@ test(
     }
 
     await page.goto("/rewards");
-    await expect(main(page).getByRole("heading", { name: "Today and this week" })).toBeVisible();
+    await expect(main(page).getByRole("heading", { name: "Earned so far" })).toBeVisible();
     const xp = await xpOf(page);
     expect(xp).toBeGreaterThanOrEqual(without);
     await page.goto("/rewards/status");
@@ -146,32 +147,32 @@ test(
   { tag: "@phone" },
   async ({ page }) => {
     await page.goto("/rewards/missions");
-    const daily = main(page).getByTestId("missions-daily");
-    const mission = daily.locator('[data-testid="mission"][data-code="log_today"]');
+    // Either the current objective (the band) or a journal entry: never both.
+    const mission = main(page).locator('[data-testid="mission"][data-code="log_today"]');
     await expect(mission).toBeVisible();
-    await mission.getByRole("button", { name: "Skip the Log today mission" }).click();
-    await expect(mission).toHaveCount(0);
-    await daily.getByRole("button", { name: "Bring back the Log today mission" }).click();
-    await expect(mission).toBeVisible();
+    await expect(mission).toHaveAttribute("data-state", "open");
+    // Skip is not a button on the entry; it lives in the entry's overflow menu.
+    await expect(mission.getByRole("button", { name: /^Skip/ })).toHaveCount(0);
+    await mission.getByRole("button", { name: "More for the Log today mission" }).click();
+    await page.getByRole("menuitem", { name: "Skip this mission" }).click();
+    await expect(mission).toHaveAttribute("data-state", "skipped");
+    await expect(main(page).getByTestId("missions-daily")).toContainText("Log today · Skipped");
+    await mission.getByRole("button", { name: "Bring back the Log today mission" }).click();
+    await expect(mission).toHaveAttribute("data-state", "open");
 
-    // On a phone the groups are one at a time; on a laptop all three columns show.
-    await expect(main(page).getByTestId("missions-once")).toBeAttached();
+    // Every group is on the page at both sizes: no columns, no switching.
+    await expect(main(page).getByTestId("missions-daily")).toBeVisible();
+    await expect(main(page).getByTestId("missions-once")).toBeVisible();
 
-    await page.goto("/rewards");
     const review = main(page).getByRole("button", { name: "I’ve reviewed this week" });
     if ((await review.count()) > 0) {
       await review.click();
       await expect(review).toHaveCount(0);
-      // The hub shows only the first few missions, open ones first, so a finished one can drop
-      // out of it; the Missions page lists every mission.
-      await page.goto("/rewards/missions");
       await expect(
-        main(page)
-          .getByTestId("missions-weekly")
-          .locator('[data-testid="mission"][data-code="weekly_review"]'),
+        main(page).locator('[data-testid="mission"][data-code="weekly_review"]'),
       ).toHaveAttribute("data-state", "done");
-      await page.goto("/rewards");
     }
+    await page.goto("/rewards");
     const xp = await xpOf(page);
     await page.reload();
     await expect(main(page).getByTestId("reward-xp")).toBeVisible();
@@ -207,6 +208,37 @@ test(
     });
     await expect(ring).toHaveAttribute("aria-valuetext", `${into} of ${span} XP`);
     await expect(main(page)).not.toContainText("No milestones yet");
+  },
+);
+
+test(
+  "the collection counts what's unlocked and opens a badge; Rewards has no shop cues",
+  { tag: "@phone" },
+  async ({ page }) => {
+    await page.goto("/rewards/achievements");
+    const badges = main(page).getByTestId("achievement");
+    await expect(badges).toHaveCount(7);
+    const unlocked = await main(page)
+      .locator('[data-testid="achievement"][data-state="unlocked"]')
+      .count();
+    await expect(main(page).getByTestId("achievement-count")).toHaveText(`${unlocked} of 7`);
+
+    // Names only in the grid; what earns a badge shows once it is opened.
+    const name = (await badges.first().textContent())?.split(",")[0] ?? "";
+    await badges.first().click();
+    const detail = page.getByTestId("achievement-detail");
+    await expect(detail.getByRole("heading", { name, exact: true })).toBeVisible();
+    const description = (await detail.locator("p").first().textContent()) ?? "";
+    expect(description.length).toBeGreaterThan(5);
+    await expect(detail.getByTestId(/^achievement-(earned|progress)$/)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(detail).toBeHidden();
+    await expect(main(page)).not.toContainText(description);
+
+    await page.goto("/rewards");
+    await expect(main(page).getByRole("heading", { name: "Earned so far" })).toBeVisible();
+    await expect(main(page).getByTestId("inventory-item").last()).toBeVisible();
+    await expect(main(page)).not.toContainText(/claim|buy|price|₹|expires|ends in|left today/i);
   },
 );
 

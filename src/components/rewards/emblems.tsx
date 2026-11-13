@@ -258,3 +258,99 @@ export function AchievementBadge({
     </svg>
   );
 }
+
+/**
+ * One engraved glyph per mission in the catalog (`quests` in the seed and
+ * `20261106000200_missions.sql`), keyed by its code. Lines only, on the 240 grid.
+ */
+const MISSION_GLYPHS: Record<string, React.ReactNode> = {
+  // Log today: a page with lines being written.
+  log_today: <path d="M96 84H144V156H96ZM108 104H132M108 120H132M108 136H122" />,
+  // Look at today: the day on the horizon.
+  review_today: <path d="M80 144H160M96 144a24 24 0 0 1 48 0M120 92V104M90 104l8 8M150 104l-8 8" />,
+  // Clear the uncategorised queue: rows sorted into their cells.
+  categorise_week: <path d="M86 94h20v20H86zM86 126h20v20H86zM120 104H156M120 136H156" />,
+  // Weekly review: a week's frame with its days.
+  weekly_review: <path d="M82 96H158V146H82ZM101 96V146M120 96V146M139 96V146" />,
+  // Move money to a goal: a mark lowered into a tray.
+  set_aside_week: <path d="M84 120V150H156V120M120 84V130M106 116l14 14 14-14" />,
+  // Save on purpose: a flag.
+  set_a_goal: <path d="M100 156V84M100 88H150L138 106L150 124H100" />,
+  // Steady habit: steps climbing.
+  steady_logging: <path d="M80 152H108V128H132V104H160" />,
+  // Saving rhythm: four layers set down in turn.
+  saving_habit: <path d="M86 150H154M92 134H148M98 118H142M104 102H136" />,
+};
+
+export type MissionGlyphState = "active" | "open" | "done" | "skipped";
+
+const ROUND = regular(12, 104);
+const ROUND_WELL = regular(12, 78);
+
+/**
+ * A mission's glyph in a round engraved frame (ranks are diamonds, achievements hexagons). Active
+ * is cut metal at full contrast; not started is an outline; done is dimmed metal with a small
+ * engraved seal; skipped is a faint outline.
+ */
+export function MissionGlyph({
+  code,
+  state,
+  size,
+  label,
+  className,
+}: NameProps & { code: string; state: MissionGlyphState; size: number; className?: string }) {
+  const small = size <= SMALL_PX;
+  const glyph = MISSION_GLYPHS[code] ?? FALLBACK_GLYPH;
+  const metal = state === "active" || state === "done";
+  return (
+    <svg
+      viewBox="0 0 240 240"
+      width={size}
+      height={size}
+      className={cn("shrink-0", className)}
+      data-state={state}
+      {...a11y(label)}
+    >
+      <g opacity={state === "done" ? 0.55 : state === "skipped" ? 0.45 : 1}>
+        {metal ? (
+          <>
+            <Cut outline={ROUND} />
+            <polygon points={points(ROUND)} fill="none" stroke="var(--emblem-line)" />
+            <polygon points={points(ROUND_WELL)} fill="var(--emblem-well)" />
+          </>
+        ) : (
+          <polygon
+            points={points(ROUND)}
+            fill="var(--emblem-well)"
+            stroke="var(--emblem-mid)"
+            strokeWidth={small ? 12 : 3}
+          />
+        )}
+        <g
+          fill="none"
+          color={metal ? "var(--emblem-hi)" : "var(--emblem-mid)"}
+          stroke="currentColor"
+          strokeWidth={small ? 16 : 7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {glyph}
+        </g>
+      </g>
+      {state === "done" && (
+        <g data-seal="">
+          <polygon points="196,150 226,180 196,210 166,180" fill="var(--emblem-hi)" />
+          <path
+            d="M182 180l9 9 16-17"
+            fill="none"
+            stroke="var(--emblem-well)"
+            strokeWidth={small ? 12 : 7}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      )}
+      {state === "active" && !small && <circle cx={C} cy={176} r={5} fill="var(--emblem-accent)" />}
+    </svg>
+  );
+}
