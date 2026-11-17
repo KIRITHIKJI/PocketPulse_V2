@@ -1,6 +1,5 @@
 import { Info } from "lucide-react";
 
-import { BUDGET_TARGET_NOTE } from "@/domain";
 import { cn } from "@/lib/utils";
 
 const METER_TONES = {
@@ -77,8 +76,8 @@ export function ProgressRing({
 }
 
 /**
- * The one way a remaining budget amount is shown, so its label can't be left out: "left" next to
- * a rupee figure reads like money in a pocket, and a budget isn't that.
+ * The one way a remaining budget amount is shown: "left" or "over target". That a budget is a
+ * target, not reserved money, is said once per page beside it (`BUDGET_TARGET_NOTE`), not here.
  */
 export function BudgetRemaining({
   remainingPaise,
@@ -90,13 +89,10 @@ export function BudgetRemaining({
   className?: string;
 }) {
   return (
-    <p className={cn("type-body", className)} data-testid="budget-remaining">
-      <span className="font-medium money">
-        {remainingPaise >= 0
-          ? `${money(remainingPaise)} left`
-          : `${money(-remainingPaise)} over target`}
-      </span>
-      <span className="text-muted-foreground"> · {BUDGET_TARGET_NOTE}</span>
+    <p className={cn("type-body font-medium money", className)} data-testid="budget-remaining">
+      {remainingPaise >= 0
+        ? `${money(remainingPaise)} left`
+        : `${money(-remainingPaise)} over target`}
     </p>
   );
 }
@@ -118,6 +114,8 @@ export function FigureRow({
   testId,
   strong,
   valueClassName,
+  valuePaise,
+  children,
 }: {
   /** e.g. `text-money-earmark` for money set aside. */
   valueClassName?: string;
@@ -126,6 +124,10 @@ export function FigureRow({
   explanation?: React.ReactNode;
   testId?: string;
   strong?: boolean;
+  /** The exact figure, for tests that compare amounts (`data-paise`). */
+  valuePaise?: number;
+  /** What makes up this line (e.g. the bills behind it), under the explanation. */
+  children?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2.5">
@@ -140,12 +142,14 @@ export function FigureRow({
       <dd
         className={cn("shrink-0 type-body money", strong && "type-heading", valueClassName)}
         data-testid={testId}
+        data-paise={valuePaise}
       >
         {value}
       </dd>
       {explanation && (
         <dd className="basis-full type-caption text-pretty text-muted-foreground">{explanation}</dd>
       )}
+      {children && <dd className="basis-full">{children}</dd>}
     </div>
   );
 }

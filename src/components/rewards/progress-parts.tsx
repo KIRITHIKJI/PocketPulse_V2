@@ -256,7 +256,7 @@ export function MissionRow({ mission }: { mission: MissionView }) {
           xp={mission.xp}
           className={cn(
             "justify-self-end",
-            mission.complete ? "text-text-secondary opacity-70" : "text-foreground",
+            mission.complete ? "text-text-secondary" : "text-foreground",
           )}
         />
         {(actions || toSort) && (

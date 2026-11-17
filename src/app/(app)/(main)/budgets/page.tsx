@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
-import { Target, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 
 import { Notice } from "@/components/feedback/notice";
 import { ConfirmAction } from "@/components/forms/inline-action";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyHero, InfoTip, Section } from "@/components/layout/primitives";
 import { BudgetFormDialog, type BudgetSuggestion } from "@/components/plan/budget-form";
-import { BudgetRemaining, PlanNote } from "@/components/plan/parts";
-import { StatePanel } from "@/components/states/state-panel";
+import { BudgetRemaining } from "@/components/plan/parts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress, type ProgressTone } from "@/components/ui/progress";
-import { Surface } from "@/components/ui/surface";
 import {
   type Budget,
   type BudgetEvaluation,
   type Period,
   type TimeSettings,
+  BUDGET_TARGET_NOTE,
   budgetAlert,
   evaluateBudget,
   formatBasisPoints,
@@ -80,6 +80,10 @@ function periodsFor(now: number, settings: TimeSettings): (Period | null)[] {
   return [week, previousPeriod(week), ...months];
 }
 
+/**
+ * Budgets (doc/DESIGN_PLAN.md, V2 Phase 3E): the total budget's progress leads, the other budgets
+ * follow as rows. That a budget is a target, not reserved money, is said once for the page.
+ */
 export default async function BudgetsPage() {
   const now = requestNow();
   const since = startForAnyZone((settings) => periodsFor(now, settings))!;
@@ -151,7 +155,7 @@ export default async function BudgetsPage() {
   const totalSuggestion = suggestions.find((s) => s.scope === "");
 
   const actions = (row: Row) => (
-    <div className="mt-auto flex flex-wrap items-center gap-1 border-t pt-2">
+    <div className="-ml-2 flex flex-wrap items-center gap-1">
       <BudgetFormDialog
         budget={{ ...row.budget, label: row.label }}
         categories={pickable}
@@ -176,7 +180,7 @@ export default async function BudgetsPage() {
   );
 
   const pace = ({ budget, evaluation, previous }: Row) => (
-    <p className="type-caption text-muted-foreground">
+    <p className="type-caption text-text-secondary">
       {formatBasisPoints(evaluation.elapsedBp, 0)} of the period has passed.
       {previous ? (
         <>
@@ -189,24 +193,26 @@ export default async function BudgetsPage() {
     </p>
   );
 
-  /** One budget. The hero shows its spending as the screen's one display figure. */
-  const budgetCard = (row: Row, main: boolean) => {
+  /** One budget. The lead one shows its spending as the screen's hero figure; the rest are rows. */
+  const budgetView = (row: Row, main: boolean) => {
     const { budget, evaluation, label } = row;
     const status = STATUS[evaluation.status];
     const Heading = main ? "h2" : "h3";
     const used = formatBasisPoints(evaluation.usedBp, 0);
     return (
-      <Surface variant={main ? "hero" : "card"} className="h-full" data-testid="budget-card">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <Heading className="truncate type-heading">{label}</Heading>
+      <div className={cn("flex flex-col", main ? "gap-3" : "gap-2 py-4")} data-testid="budget-card">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <Heading className={cn("truncate", main ? "type-label" : "type-body font-medium")}>
+              {label}
+            </Heading>
             <p className="type-caption text-text-secondary">{periodText(budget, evaluation)}</p>
           </div>
           <Badge variant={status.variant}>{status.label}</Badge>
         </div>
         <p className="type-body text-text-secondary">
           <span
-            className={cn("text-foreground money", main ? "type-display" : "type-heading")}
+            className={cn("text-foreground money", main ? "type-hero" : "type-heading")}
             data-testid="budget-spent"
           >
             {money(Math.max(0, evaluation.spentPaise))}
@@ -223,12 +229,31 @@ export default async function BudgetsPage() {
           aria-label={`${label} budget used`}
           valueText={`${used} used`}
         />
-        <BudgetRemaining remainingPaise={evaluation.remainingPaise} money={money} />
-        {pace(row)}
+        <div className="flex flex-col gap-0.5">
+          <BudgetRemaining remainingPaise={evaluation.remainingPaise} money={money} />
+          {pace(row)}
+        </div>
         {actions(row)}
-      </Surface>
+      </div>
     );
   };
+
+  /** Said once for the page instead of on every budget; the details sit behind the icon. */
+  const targetNote = (
+    <div className="relative flex items-center gap-1" data-testid="budget-target-note">
+      <p className="type-body text-text-secondary">A budget is a {BUDGET_TARGET_NOTE}.</p>
+      <InfoTip label="About budgets">
+        <p>
+          Budgets don’t change your balance or Safe to Spend; no money is held for them. They never
+          block a purchase.
+        </p>
+        <p>
+          Pace compares the share of the budget used with the share of the period that has passed.
+        </p>
+        {!alertsOn && <p>Budget alerts are off in Settings.</p>}
+      </InfoTip>
+    </div>
+  );
 
   return (
     <>
@@ -244,13 +269,13 @@ export default async function BudgetsPage() {
       />
 
       {rows.length === 0 ? (
-        <StatePanel
-          icon={Target}
+        <EmptyHero
+          label="Budgets"
           title="Set a monthly budget"
           description={
             <>
-              Set a total or per-category target and see spent, remaining and pace. A budget is a
-              target, not reserved money.
+              Set a total or per-category target and see spent, remaining and pace. A budget is a{" "}
+              {BUDGET_TARGET_NOTE}.
               {totalSuggestion ? (
                 <>
                   {" "}
@@ -277,42 +302,42 @@ export default async function BudgetsPage() {
       ) : (
         <>
           {alerts.length > 0 && (
-            <section
-              aria-label="Budget alerts"
-              className="flex flex-col gap-2"
-              data-testid="budget-alerts"
-            >
-              {alerts.map((alert) => (
-                <Notice key={alert.budgetId} tone="warning">
-                  {alert.exceeded
-                    ? `${alert.label} is over its target, at ${formatBasisPoints(alert.usedBp, 0)}. That’s worth knowing; nothing is blocked.`
-                    : `${alert.label} has reached ${formatBasisPoints(alert.thresholdBp, 0)} of its target.`}
-                </Notice>
-              ))}
-            </section>
-          )}
-
-          {hero ? budgetCard(hero, true) : null}
-
-          {rest.length > 0 && (
-            <section aria-labelledby="budgets-rest" className="flex flex-col gap-stack">
-              <h2 id="budgets-rest" className="type-heading">
-                {hero ? "Other budgets" : "Your budgets"}
-              </h2>
-              <ul className="grid gap-4 lg:grid-cols-2">
-                {rest.map((row) => (
-                  <li key={row.budget.id} className="min-w-0">
-                    {budgetCard(row, false)}
+            <Notice tone="warning" data-testid="budget-alerts" aria-label="Budget alerts">
+              <ul className="flex flex-col gap-1">
+                {alerts.map((alert) => (
+                  <li key={alert.budgetId}>
+                    {alert.exceeded
+                      ? `${alert.label} is over its target, at ${formatBasisPoints(alert.usedBp, 0)}. That’s worth knowing; nothing is blocked.`
+                      : `${alert.label} has reached ${formatBasisPoints(alert.thresholdBp, 0)} of its target.`}
                   </li>
                 ))}
               </ul>
-            </section>
+            </Notice>
           )}
 
-          <PlanNote>
-            Budgets don’t change your balance or safe-to-spend; no money is held for them.
-            {!alertsOn ? " Budget alerts are off in Settings." : ""}
-          </PlanNote>
+          {hero ? (
+            <section aria-label="Total budget" className="flex max-w-3xl flex-col gap-4">
+              {budgetView(hero, true)}
+              {targetNote}
+            </section>
+          ) : (
+            targetNote
+          )}
+
+          {rest.length > 0 && (
+            <Section title={hero ? "Other budgets" : "Your budgets"}>
+              <ul className="grid divide-y divide-(--section-divider) lg:grid-cols-2 lg:gap-x-12 lg:divide-y-0">
+                {rest.map((row) => (
+                  <li
+                    key={row.budget.id}
+                    className="min-w-0 lg:border-b lg:border-(--section-divider)"
+                  >
+                    {budgetView(row, false)}
+                  </li>
+                ))}
+              </ul>
+            </Section>
+          )}
         </>
       )}
     </>

@@ -1,15 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PiggyBank } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import { CategoryBadge } from "@/components/categories/category-icon";
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyHero, InfoTip, Section } from "@/components/layout/primitives";
 import { GoalFormDialog } from "@/components/plan/goal-form";
-import { PlanNote } from "@/components/plan/parts";
-import { StatePanel } from "@/components/states/state-panel";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Surface } from "@/components/ui/surface";
 import {
   type ContributionCadence,
   type SavingsGoal,
@@ -29,6 +27,14 @@ const STATUS_BADGE = {
   archived: { label: "Archived", variant: "outline" },
 } as const;
 
+const ROW =
+  "-mx-2 flex min-h-14 items-center gap-3 rounded-lg px-2 py-2.5 transition-colors duration-(--duration-quick) outline-none hover:bg-accent/50 focus-visible:ring-[3px] focus-visible:ring-ring/50";
+
+/**
+ * Savings goals (doc/DESIGN_PLAN.md, V2 Phase 3E): the active goal's progress leads, with the
+ * suggested amount toward the date the user set; the total set aside is one line; every other goal
+ * is a row.
+ */
 export default async function GoalsPage() {
   const [plan, goals] = await Promise.all([loadPlan(), getGoals()]);
   const { profile, ledger, today, money, result } = plan;
@@ -36,66 +42,72 @@ export default async function GoalsPage() {
     ? "weekly"
     : "monthly";
   const setAside = totalEarmarked(ledger);
+  const progressOf = (goal: SavingsGoal) => goalProgress(goal, ledger, today, cadence, money);
 
-  /** One goal: what it's for, how far along it is, and the money set aside (never spending). */
-  const card = (goal: SavingsGoal) => {
-    const progress = goalProgress(goal, ledger, today, cadence, money);
-    const badge = STATUS_BADGE[goal.status];
-    const done = goal.status === "completed";
-    const bp = done ? 10_000 : progress.progressBp;
+  /** The goal being saved toward, as the screen's hero. The whole block opens the goal. */
+  const lead = (goal: SavingsGoal) => {
+    const progress = progressOf(goal);
     return (
-      <li key={goal.id} className="min-w-0">
-        <Surface variant="interactive" className="h-full" asChild data-testid="goal-card">
-          <Link href={`/goals/${goal.id}`}>
-            <div className="flex items-start gap-3">
-              <CategoryBadge icon={goal.icon ?? "piggy-bank"} color={null} size="sm" />
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-                <h3 className="min-w-0 truncate type-heading">{goal.title}</h3>
-                {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
-              </div>
-            </div>
-            <p className="type-body text-text-secondary">
-              <span className="font-medium text-money-earmark money">
-                {money(progress.savedPaise)}
-              </span>{" "}
-              set aside, still yours
-            </p>
-            <Progress
-              bp={bp}
-              aria-label={`${goal.title}: saved of target`}
-              valueText={formatBasisPoints(bp, 0)}
-            />
-            <p className="type-caption text-muted-foreground">
-              <span className="money">{money(progress.savedPaise)}</span> of{" "}
-              <span className="money">{money(goal.targetPaise)}</span> ·{" "}
-              <span className="money">{formatBasisPoints(progress.progressBp, 0)}</span>.{" "}
-              {progress.explanation}
-            </p>
-          </Link>
-        </Surface>
-      </li>
-    );
-  };
-
-  /** A goal that isn't being saved towards: one compact row, so it doesn't crowd active ones. */
-  const row = (goal: SavingsGoal) => {
-    const progress = goalProgress(goal, ledger, today, cadence, money);
-    const badge = STATUS_BADGE[goal.status];
-    return (
-      <li key={goal.id}>
+      <section aria-label="Saving for" className="flex max-w-3xl flex-col gap-1">
+        <p className="type-label text-text-secondary">Saving for</p>
         <Link
           href={`/goals/${goal.id}`}
           data-testid="goal-card"
-          className="flex min-h-14 items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-(--duration-quick) outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          className="-mx-3 flex flex-col gap-3 rounded-xl px-3 py-2 transition-colors duration-(--duration-quick) outline-none hover:bg-accent/40 focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
+          <span className="flex items-center gap-3">
+            <CategoryBadge icon={goal.icon ?? "piggy-bank"} color={null} size="sm" />
+            <span className="min-w-0 truncate type-title">{goal.title}</span>
+            <ChevronRight
+              className="ml-auto size-5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </span>
+          <span className="type-body text-text-secondary">
+            <span className="type-hero text-money-earmark money">{money(progress.savedPaise)}</span>{" "}
+            of <span className="money">{money(goal.targetPaise)}</span> set aside ·{" "}
+            <span className="money">{formatBasisPoints(progress.progressBp, 0)}</span>
+          </span>
+          <Progress
+            bp={progress.progressBp}
+            aria-label={`${goal.title}: saved of target`}
+            valueText={formatBasisPoints(progress.progressBp, 0)}
+          />
+          <span className="type-body text-pretty text-text-secondary">{progress.explanation}</span>
+        </Link>
+      </section>
+    );
+  };
+
+  /** Any other goal: one row, its progress as a thin bar when it's being saved toward. */
+  const row = (goal: SavingsGoal) => {
+    const progress = progressOf(goal);
+    const badge = STATUS_BADGE[goal.status];
+    const bp = goal.status === "completed" ? 10_000 : progress.progressBp;
+    return (
+      <li key={goal.id}>
+        <Link href={`/goals/${goal.id}`} data-testid="goal-card" className={ROW}>
           <CategoryBadge icon={goal.icon ?? "piggy-bank"} color={null} size="sm" />
-          <span className="flex min-w-0 flex-1 flex-col">
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate type-body font-medium">{goal.title}</span>
               {badge && <Badge variant={badge.variant}>{badge.label}</Badge>}
             </span>
-            <span className="type-caption text-muted-foreground">
+            {goal.status === "active" ? (
+              <Progress
+                bp={bp}
+                aria-label={`${goal.title}: saved of target`}
+                valueText={formatBasisPoints(bp, 0)}
+              />
+            ) : null}
+            <span className="type-caption text-text-secondary">
               <span className="money">{money(goal.targetPaise)}</span> target
+              {goal.status === "active" ? (
+                <>
+                  {" "}
+                  · <span className="money">{formatBasisPoints(bp, 0)}</span>
+                </>
+              ) : null}
             </span>
           </span>
           <span className="shrink-0 type-body text-money-earmark money">
@@ -109,27 +121,13 @@ export default async function GoalsPage() {
 
   const rows = (title: string, list: SavingsGoal[]) =>
     list.length > 0 && (
-      <section className="flex flex-col gap-stack" aria-label={title}>
-        <h2 className="type-heading">
-          {title}{" "}
-          <span className="type-body font-normal text-muted-foreground">· {list.length}</span>
-        </h2>
-        <Surface className="p-1">
-          <ul className="flex flex-col divide-y">{list.map(row)}</ul>
-        </Surface>
-      </section>
-    );
-
-  const grid = (list: SavingsGoal[]) => (
-    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(card)}</ul>
-  );
-
-  const section = (title: string, list: SavingsGoal[]) =>
-    list.length > 0 && (
-      <section className="flex flex-col gap-stack" aria-label={title}>
-        <h2 className="type-heading">{title}</h2>
-        {grid(list)}
-      </section>
+      <Section
+        title={title}
+        meta={`${list.length} ${list.length === 1 ? "goal" : "goals"}`}
+        className="min-w-0"
+      >
+        <ul className="flex flex-col divide-y divide-(--section-divider)">{list.map(row)}</ul>
+      </Section>
     );
 
   const active = goals.filter((g) => g.status === "active");
@@ -137,6 +135,7 @@ export default async function GoalsPage() {
   const completed = goals.filter((g) => g.status === "completed");
   const archived = goals.filter((g) => g.status === "archived");
   const resting = paused.length + completed.length;
+  const [first, ...otherActive] = active;
 
   return (
     <>
@@ -148,52 +147,53 @@ export default async function GoalsPage() {
       />
 
       {goals.length === 0 ? (
-        <StatePanel
-          icon={PiggyBank}
+        <EmptyHero
+          label="Saving for"
           title="Save toward something specific"
           description="Money you set aside stays in your balance. It comes off Safe to Spend, and it never counts as spending."
           actions={<GoalFormDialog today={today} />}
         />
       ) : (
         <>
-          <Surface className="flex-row flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className="type-body text-text-secondary">Set aside across all goals · now</h2>
-            <p className="type-heading text-money-earmark money" data-testid="total-saved">
-              {money(setAside)}
-            </p>
-            <p className="basis-full type-caption text-muted-foreground">
-              Still yours, and still part of your tracked balance of{" "}
-              <span className="money">{money(result.inputs.balancePaise)}</span>. It’s only
-              earmarked.
-            </p>
-          </Surface>
-
-          {active.length > 0 ? (
-            section("Active", active)
+          {first ? (
+            lead(first)
           ) : (
-            <Surface>
-              <StatePanel
-                size="section"
-                icon={PiggyBank}
-                title="No active goals"
-                description="Add a goal, or resume one below, to keep setting money aside."
-                actions={<GoalFormDialog today={today} />}
-              />
-            </Surface>
+            <EmptyHero
+              label="Saving for"
+              title="No active goals"
+              description="Add a goal, or resume one below, to keep setting money aside."
+              actions={<GoalFormDialog today={today} />}
+            />
           )}
 
+          <div className="relative flex flex-wrap items-center gap-x-1">
+            <p className="type-body text-text-secondary">
+              Set aside across all goals:{" "}
+              <span className="font-medium text-money-earmark money" data-testid="total-saved">
+                {money(setAside)}
+              </span>
+              , still in your tracked balance of{" "}
+              <span className="money">{money(result.inputs.balancePaise)}</span>.
+            </p>
+            <InfoTip label="About money set aside">
+              <p>
+                Money set aside is still yours and still part of your tracked balance. It’s only
+                earmarked, so it comes off Safe to Spend.
+              </p>
+              <p>
+                Money in paused, complete or archived goals stays set aside until you release it.
+              </p>
+            </InfoTip>
+          </div>
+
+          {rows("Other active goals", otherActive)}
           {resting > 0 && (
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-section lg:grid-cols-2 lg:gap-x-12">
               {rows("Paused", paused)}
               {rows("Complete", completed)}
             </div>
           )}
-
           {rows("Archived", archived)}
-
-          <PlanNote>
-            Money in paused, complete or archived goals stays set aside until you release it.
-          </PlanNote>
         </>
       )}
     </>

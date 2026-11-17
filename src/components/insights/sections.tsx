@@ -1,11 +1,10 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowDownRight, ArrowUpRight, Inbox } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 
 import { CategoryBadge } from "@/components/categories/category-icon";
 import { type TrendRow, NoteLine, RowLink, ShareBar, TrendCard } from "@/components/insights/parts";
-import { StatePanel } from "@/components/states/state-panel";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
+import { InfoTip, Section } from "@/components/layout/primitives";
 import {
   type Category,
   type CategoryBreakdown,
@@ -172,7 +171,7 @@ function CategoryRow({
   const hasSubs = group.subcategories.some((s) => s.key !== UNCATEGORIZED);
   return (
     <li
-      className="flex flex-col gap-1 py-1 first:pt-0 last:pb-0"
+      className="flex flex-col gap-1 py-1.5 first:pt-0 last:pb-0"
       data-testid="category-row"
       data-paise={group.netPaise}
     >
@@ -276,12 +275,23 @@ export function CategorySection({
   const signedOut = breakdown.categories.some((c) => c.netPaise < 0);
   const count = breakdown.categories.length;
   return (
-    <Surface className={cn("min-w-0", className)} data-testid="category-section">
-      <SurfaceHeader
-        title="Where it went"
-        meta={`${count} ${count === 1 ? "category" : "categories"} · open one for its entries`}
-      />
-      <ul className="-mx-2 flex flex-col divide-y">
+    <Section
+      title="Where it went"
+      meta={`${count} ${count === 1 ? "category" : "categories"} · open one for its entries`}
+      action={
+        signedOut ? (
+          <InfoTip label="About these shares" align="end">
+            <p>
+              Percentages here are shares of the categories with net spending, so refunds from an
+              earlier period don’t push them above 100%.
+            </p>
+          </InfoTip>
+        ) : undefined
+      }
+      className={cn("min-w-0", className)}
+      data-testid="category-section"
+    >
+      <ul className="-mx-2 flex flex-col divide-y divide-(--section-divider)">
         {breakdown.categories.map((group) => (
           <CategoryRow
             key={group.key}
@@ -294,25 +304,18 @@ export function CategorySection({
           />
         ))}
       </ul>
-      {signedOut && (
-        <NoteLine>
-          Percentages here are shares of the categories with net spending, so refunds from an
-          earlier period don’t push them above 100%.
-        </NoteLine>
-      )}
-    </Surface>
+    </Section>
   );
 }
 
+/** Said plainly where the findings would be: no icon, no box. */
 export function NoInsights({ words }: { words: InsightWords }) {
   return (
-    <div data-testid="no-insights">
-      <StatePanel
-        size="section"
-        icon={Inbox}
-        title={`Nothing stands out ${words.period} yet`}
-        description="Findings appear once purchases repeat or there’s something to compare."
-      />
+    <div data-testid="no-insights" className="flex flex-col gap-0.5">
+      <p className="type-body font-medium">Nothing stands out {words.period} yet</p>
+      <p className="type-caption text-text-secondary">
+        Findings appear once purchases repeat or there’s something to compare.
+      </p>
     </div>
   );
 }

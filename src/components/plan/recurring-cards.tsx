@@ -47,79 +47,117 @@ function DateMark({ date, overdue }: { date: LocalDate; overdue: boolean }) {
   );
 }
 
-/** One due or upcoming item as a timeline row: when, what, how much, and record, skip or cancel. */
-export function DueItemCard({ item, kit, money }: { item: DueItem; kit: EntryKit; money: Money }) {
+/**
+ * One due or upcoming item: when, what, how much, and record, skip or cancel. As a timeline row,
+ * or with `lead` as the screen's main element (the next item due), larger and without the date mark.
+ */
+export function DueItemCard({
+  item,
+  kit,
+  money,
+  lead = false,
+}: {
+  item: DueItem;
+  kit: EntryKit;
+  money: Money;
+  lead?: boolean;
+}) {
   const income = item.kind === "income";
-  return (
-    <div className="flex flex-col gap-2 py-3" data-testid="due-item">
-      <div className="flex items-start gap-3">
-        <DateMark date={item.dueDate} overdue={item.overdue} />
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="min-w-0 truncate type-body font-medium">{item.title}</h3>
-            <p
-              className={cn(
-                "shrink-0 type-body font-semibold money",
-                income && "text-money-positive",
-              )}
-            >
-              {income ? "+" : ""}
-              {money(item.amountPaise)}
+  const amount = (
+    <p
+      className={cn(
+        "shrink-0 money",
+        lead ? "type-hero" : "type-body font-semibold",
+        income && "text-money-positive",
+      )}
+    >
+      {income ? "+" : ""}
+      {money(item.amountPaise)}
+    </p>
+  );
+  // A row's date mark already shows the date, so its words are for screen readers only.
+  const when = (
+    <p className={lead ? "type-body text-text-secondary" : "sr-only"}>
+      {item.overdue ? "Was due" : "Due"} {formatLocalDate(item.dueDate)}
+    </p>
+  );
+  const badges = (
+    <p className="flex flex-wrap gap-1">
+      <Badge variant="outline">{item.label === "Bill" ? "Planned, not paid" : item.label}</Badge>
+      {item.overdue && <Badge variant="warning">Overdue</Badge>}
+      {item.counted && <Badge variant="outline">Counted in safe-to-spend</Badge>}
+    </p>
+  );
+  const actions = (
+    <div className="flex flex-wrap items-center gap-1 pt-1">
+      <RecordDueButton item={item} kit={kit} />
+      {item.source === "recurring" ? (
+        <InlineAction
+          action={skipOccurrence}
+          fields={{
+            templateId: item.templateId!,
+            occurrence: item.occurrence!,
+          }}
+          pendingLabel="Skipping…"
+          aria-label={`Skip ${item.title} on ${formatLocalDate(item.dueDate)}`}
+        >
+          <SkipForward aria-hidden="true" />
+          Skip
+        </InlineAction>
+      ) : (
+        <ConfirmAction
+          action={cancelBill}
+          fields={{ id: item.commitmentId! }}
+          trigger={
+            <Button variant="ghost" size="sm">
+              Cancel bill
+            </Button>
+          }
+          title={`Cancel ${item.title}?`}
+          description={
+            <p>
+              It stops coming off safe-to-spend. If you already recorded this payment as an entry,
+              cancelling is right: that keeps it from being subtracted twice.
             </p>
-          </div>
-          <p className="type-caption text-text-secondary">
-            {item.overdue ? "Was due" : "Due"} {formatLocalDate(item.dueDate)}
-          </p>
-          <p className="flex flex-wrap gap-1">
-            <Badge variant="outline">
-              {item.label === "Bill" ? "Planned, not paid" : item.label}
-            </Badge>
-            {item.overdue && <Badge variant="warning">Overdue</Badge>}
-            {item.counted && <Badge variant="outline">Counted in safe-to-spend</Badge>}
-          </p>
-          <div className="flex flex-wrap items-center gap-1 pt-1">
-            <RecordDueButton item={item} kit={kit} />
-            {item.source === "recurring" ? (
-              <InlineAction
-                action={skipOccurrence}
-                fields={{
-                  templateId: item.templateId!,
-                  occurrence: item.occurrence!,
-                }}
-                pendingLabel="Skipping…"
-                aria-label={`Skip ${item.title} on ${formatLocalDate(item.dueDate)}`}
-              >
-                <SkipForward aria-hidden="true" />
-                Skip
-              </InlineAction>
-            ) : (
-              <ConfirmAction
-                action={cancelBill}
-                fields={{ id: item.commitmentId! }}
-                trigger={
-                  <Button variant="ghost" size="sm">
-                    Cancel bill
-                  </Button>
-                }
-                title={`Cancel ${item.title}?`}
-                description={
-                  <p>
-                    It stops coming off safe-to-spend. If you already recorded this payment as an
-                    entry, cancelling is right: that keeps it from being subtracted twice.
-                  </p>
-                }
-                confirmLabel="Cancel bill"
-                pendingLabel="Cancelling…"
-              />
-            )}
-          </div>
+          }
+          confirmLabel="Cancel bill"
+          pendingLabel="Cancelling…"
+        />
+      )}
+    </div>
+  );
+
+  if (lead) {
+    return (
+      <div className="flex flex-col gap-2" data-testid="due-item">
+        <h2 className="truncate type-title">{item.title}</h2>
+        {amount}
+        {when}
+        {badges}
+        {actions}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-start gap-3 py-3" data-testid="due-item">
+      <DateMark date={item.dueDate} overdue={item.overdue} />
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="min-w-0 truncate type-body font-medium">{item.title}</h3>
+          {amount}
         </div>
+        {when}
+        {badges}
+        {actions}
       </div>
     </div>
   );
 }
 
-/** One recurring template as a list row: its schedule and the edit, pause and archive actions. */
+/**
+ * One recurring template as a list row: its schedule and the edit, pause and archive actions. Its
+ * next date is "scheduled": nothing counts until a real entry records it.
+ */
 export function RecurringTemplateCard({
   template: t,
   kit,
@@ -140,7 +178,11 @@ export function RecurringTemplateCard({
           <h3 className="truncate type-body font-medium">{t.title}</h3>
           <p className="type-caption text-text-secondary">
             {income ? "Income" : "Expense"} · {everyText(t)}
-            {t.pausedAt ? " · paused" : next ? ` · next ${formatLocalDate(next)}` : " · ended"}
+            {t.pausedAt
+              ? " · paused"
+              : next
+                ? ` · scheduled next ${formatLocalDate(next)}`
+                : " · ended"}
           </p>
         </div>
         <p

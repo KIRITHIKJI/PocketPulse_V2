@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { Route } from "next";
 import Link from "next/link";
+import { Info } from "lucide-react";
 import { Slot } from "radix-ui";
 
 import { cn } from "@/lib/utils";
@@ -10,6 +11,8 @@ import { cn } from "@/lib/utils";
  * a border is only for content that really is a separate object (`Panel`). Sections of a page are
  * separated by space and hairline dividers (`Section`, `StatRow`, `DataList`), never by more boxes.
  * Server components, no client code. `PageHeader` with `tabs` is the page header with hub tabs.
+ * `InfoTip` holds what doesn't fit in a section's one helper line; `EmptyHero` is a screen's
+ * honest empty or sparse state, in the place its main figure would take.
  */
 
 /**
@@ -79,7 +82,7 @@ export function Section({
       {...props}
     >
       {title || action ? (
-        <div className="flex items-end justify-between gap-3">
+        <div className="relative flex items-end justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
             {title ? (
               <h2 id={headingId} className="type-heading">
@@ -209,5 +212,80 @@ export function DataRow({
         <div className={row}>{body}</div>
       )}
     </li>
+  );
+}
+
+/**
+ * An info icon that opens a short note: what doesn't fit in a section's one helper line. A native
+ * disclosure (no JavaScript; keyboard and screen readers get it for free). The note opens under
+ * the nearest positioned ancestor, so put this inside a `relative` line (a `Section` title row
+ * already is one).
+ */
+export function InfoTip({
+  label,
+  align = "start",
+  children,
+  className,
+}: {
+  /** The button's accessible name, e.g. "About these figures". */
+  label: string;
+  /** Which edge of that line the note lines up with on wider screens. */
+  align?: "start" | "end";
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <details
+      data-slot="info-tip"
+      className={cn("group inline-block align-middle normal-case", className)}
+    >
+      <summary
+        aria-label={label}
+        className="-my-2.5 flex size-10 cursor-pointer list-none items-center justify-center rounded-full text-text-secondary outline-none group-open:text-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:size-11 [&::-webkit-details-marker]:hidden"
+      >
+        <Info className="size-3.5" aria-hidden="true" />
+      </summary>
+      <div
+        className={cn(
+          "absolute inset-x-0 top-full z-20 mt-1 flex flex-col gap-2 rounded-xl border border-(--panel-border) bg-popover p-4 type-caption font-normal tracking-normal text-pretty text-popover-foreground shadow-(--elevation-2) sm:w-96",
+          align === "start" ? "sm:right-auto" : "sm:left-auto",
+        )}
+      >
+        {children}
+      </div>
+    </details>
+  );
+}
+
+/**
+ * A screen's empty or sparse state, where its main figure would be: a scope label, a plain
+ * statement of what's missing, one line on what makes it appear, and that action. No box.
+ */
+export function EmptyHero({
+  label,
+  title,
+  description,
+  actions,
+  className,
+  ...props
+}: Omit<React.ComponentProps<"section">, "title"> & {
+  label?: React.ReactNode;
+  title: string;
+  description?: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <section
+      data-slot="empty-hero"
+      className={cn("flex max-w-2xl flex-col gap-2", className)}
+      {...props}
+    >
+      {label ? <p className="type-label text-text-secondary">{label}</p> : null}
+      <h2 className="type-title text-balance">{title}</h2>
+      {description ? (
+        <div className="type-body text-pretty text-text-secondary">{description}</div>
+      ) : null}
+      {actions ? <div className="mt-2 flex flex-wrap items-center gap-2">{actions}</div> : null}
+    </section>
   );
 }

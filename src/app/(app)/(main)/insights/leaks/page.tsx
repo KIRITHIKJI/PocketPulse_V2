@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
-import { Droplets, Settings, Zap } from "lucide-react";
+import { ChevronDown, Settings, Zap } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { HubTabs } from "@/components/layout/hub-tabs";
-import { NoteLine, PeriodPicker } from "@/components/insights/parts";
+import { EmptyHero, InfoTip, Section } from "@/components/layout/primitives";
+import { PeriodPicker } from "@/components/insights/parts";
 import { WhatIf } from "@/components/insights/what-if";
-import { StatePanel } from "@/components/states/state-panel";
 import { EntryCard } from "@/components/transactions/entry-list";
 import { Button } from "@/components/ui/button";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import {
+  type PurchaseGroup,
   type PurchaseGrouping,
   comparisonWindows,
   formatBasisPoints,
@@ -49,9 +49,7 @@ const GROUPING_LABELS: Record<PurchaseGrouping, string> = {
   category: "Category",
 };
 
-/** Desktop columns: group · times · each · total · what-if. Phones stack the same cells. */
-const COLUMNS =
-  "lg:grid-cols-[minmax(0,1fr)_4.5rem_6.5rem_7rem_minmax(0,1.5fr)] lg:items-center lg:gap-4";
+const FOCUS = "outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
 export default async function MoneyLeaksPage({
   searchParams,
@@ -114,6 +112,27 @@ export default async function MoneyLeaksPage({
         timeLabel: `${formatDayLabel(toLocalDate(occurredAtMs(tx), tz), today)}, ${formatTimeOf(tx.occurredAt, tz)}`,
       }));
 
+  const hrefOf = (group: PurchaseGroup): Route =>
+    historyHref({
+      type: "spending",
+      ...periodScope(period),
+      underPaise: threshold,
+      by,
+      key: group.key,
+    });
+  const nameOf = (group: PurchaseGroup) => group.label.split(" › ").at(-1)!;
+  const detailOf = (group: PurchaseGroup) =>
+    [
+      `${group.count} times`,
+      `average ${money(group.averagePaise!)}`,
+      group.shareBp === null ? null : `${formatBasisPoints(group.shareBp, 0)} of spending`,
+      group.refundsPaise > 0 ? `${money(group.refundsPaise)} refunded` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  // Groups come biggest first: the first one leads the screen.
+  const biggest = report.groups[0];
+
   const settingsLink = (
     <Button variant="outline" asChild>
       <Link href="/settings">
@@ -128,7 +147,7 @@ export default async function MoneyLeaksPage({
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <PageHeader
           title="Money leaks"
-          description="Repeated small purchases, grouped so you can decide what’s worth it. No judgement."
+          description="Repeated small purchases, grouped so you can decide what’s worth it."
         />
         <div className="min-w-0 xl:shrink-0">
           <PeriodPicker
@@ -153,7 +172,8 @@ export default async function MoneyLeaksPage({
                 scroll={false}
                 aria-current={option === by ? "true" : undefined}
                 className={cn(
-                  "inline-flex min-h-10 items-center rounded-lg px-3 type-body font-medium whitespace-nowrap text-muted-foreground transition-colors duration-(--duration-quick) outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 pointer-coarse:min-h-11",
+                  "inline-flex min-h-10 items-center rounded-lg px-3 type-body font-medium whitespace-nowrap text-muted-foreground transition-colors duration-(--duration-quick) hover:text-foreground pointer-coarse:min-h-11",
+                  FOCUS,
                   option === by && "bg-card text-foreground shadow-sm",
                 )}
               >
@@ -164,13 +184,13 @@ export default async function MoneyLeaksPage({
         </ul>
       </nav>
 
-      {report.groups.length === 0 ? (
-        <StatePanel
-          icon={Droplets}
+      {!biggest ? (
+        <EmptyHero
+          label={`Repeated small purchases · ${words.period}`}
           title="Not enough repeated purchases yet"
           description={
             <>
-              No repeated small purchases {words.period}. A leak needs {MIN_REPEATS} similar
+              No repeated small purchases {words.period}. A group needs {MIN_REPEATS} similar
               purchases under <span className="money">{money(threshold)}</span>.
             </>
           }
@@ -191,129 +211,133 @@ export default async function MoneyLeaksPage({
           }
         />
       ) : (
-        <Surface className="min-w-0">
-          <SurfaceHeader title={`Repeated purchases ${words.period}`}>
-            <p className="type-caption text-text-secondary money" data-testid="leak-summary">
-              {report.groups.length} repeated{" "}
-              {report.groups.length === 1 ? "purchase" : "purchases"} under {money(threshold)}{" "}
-              {words.period}: {money(report.netPaise)}
-              {report.shareBp === null
-                ? ""
-                : `, ${formatBasisPoints(report.shareBp, 0)} of your spending`}
-              .
-            </p>
-          </SurfaceHeader>
-          <div
-            aria-hidden="true"
-            className={cn(
-              "hidden border-b pb-2 type-caption text-muted-foreground lg:grid",
-              COLUMNS,
-            )}
+        <div className="grid gap-section lg:grid-cols-12 lg:items-start lg:gap-x-12">
+          <section
+            aria-label="Biggest repeated purchase"
+            className="flex min-w-0 flex-col gap-4 lg:col-span-5"
           >
-            <span>Group</span>
-            <span className="text-right">Times</span>
-            <span className="text-right">Average</span>
-            <span className="text-right">Total</span>
-            <span>What if</span>
-          </div>
-          <ul className="flex flex-col divide-y">
-            {report.groups.map((group) => {
-              const href: Route = historyHref({
-                type: "spending",
-                ...periodScope(period),
-                underPaise: threshold,
-                by,
-                key: group.key,
-              });
-              const c = group.comparison;
-              const name = group.label.split(" › ").at(-1)!;
-              const extra = [
-                group.shareBp === null
-                  ? null
-                  : `${formatBasisPoints(group.shareBp, 0)} of spending`,
-                group.refundsPaise > 0 ? `${money(group.refundsPaise)} refunded` : null,
-              ].filter(Boolean);
-              return (
-                <li
-                  key={group.key}
-                  className="flex min-w-0 flex-col gap-2 py-3 first:pt-0 last:pb-0 lg:first:pt-1"
-                  data-testid="leak-group"
-                  data-paise={group.netPaise}
-                >
-                  <div className={cn("grid gap-2", COLUMNS)}>
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <h3 className="truncate type-body font-semibold">{name}</h3>
-                        <span className="shrink-0 type-body font-semibold money lg:hidden">
+            <div className="flex flex-col gap-1">
+              <div className="relative flex items-center gap-1">
+                <h2 className="type-label text-text-secondary">
+                  Biggest repeated purchase · {words.period}
+                </h2>
+                <InfoTip label="About money leaks">
+                  <p>
+                    Purchases under <span className="money">{money(threshold)}</span> that repeat at
+                    least {MIN_REPEATS} times, grouped by {GROUPING_LABELS[by].toLowerCase()}. The
+                    amount is set in Settings.
+                  </p>
+                  <p>What-ifs are simple estimates from the median price, not advice.</p>
+                  {report.ungroupedCount > 0 && (
+                    <p>
+                      {report.ungroupedCount} small{" "}
+                      {report.ungroupedCount === 1 ? "purchase has" : "purchases have"} nothing to
+                      group by in this view.
+                    </p>
+                  )}
+                </InfoTip>
+              </div>
+              <p className="type-title">{nameOf(biggest)}</p>
+              <Link
+                href={hrefOf(biggest)}
+                className={`self-start rounded-lg hover:underline ${FOCUS}`}
+              >
+                <span className="type-hero money">{money(biggest.netPaise)}</span>
+              </Link>
+              <p className="type-body text-text-secondary money">{detailOf(biggest)}</p>
+            </div>
+            <WhatIf
+              group={biggest}
+              name={nameOf(biggest)}
+              span="a period like this one"
+              currency={profile.currency}
+            />
+          </section>
+
+          <Section
+            title={`Repeated purchases ${words.period}`}
+            className="min-w-0 lg:col-span-7 lg:border-t-0 lg:pt-0"
+            meta={
+              <span className="money" data-testid="leak-summary">
+                {report.groups.length} under {money(threshold)}, together {money(report.netPaise)}
+                {report.shareBp === null
+                  ? ""
+                  : `, ${formatBasisPoints(report.shareBp, 0)} of your spending`}
+                . Open one for its what-if and entries.
+              </span>
+            }
+          >
+            <ul className="flex flex-col divide-y divide-(--section-divider)">
+              {report.groups.map((group) => {
+                const c = group.comparison;
+                const name = nameOf(group);
+                return (
+                  <li
+                    key={group.key}
+                    className="min-w-0"
+                    data-testid="leak-group"
+                    data-paise={group.netPaise}
+                  >
+                    <details className="group/leak">
+                      <summary
+                        className={`-mx-2 flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-lg px-2 py-2.5 transition-colors duration-(--duration-quick) hover:bg-accent/50 [&::-webkit-details-marker]:hidden ${FOCUS}`}
+                      >
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate type-body font-medium">{name}</span>
+                          <span className="truncate type-caption text-text-secondary money">
+                            {detailOf(group)}
+                          </span>
+                        </span>
+                        <span className="shrink-0 type-body font-semibold money">
                           {money(group.netPaise)}
                         </span>
+                        <ChevronDown
+                          className="size-4 shrink-0 text-muted-foreground transition-transform duration-(--duration-quick) group-open/leak:rotate-180"
+                          aria-hidden="true"
+                        />
+                      </summary>
+                      <div className="flex flex-col gap-3 pt-1 pb-4">
+                        <WhatIf
+                          group={group}
+                          name={name}
+                          span="a period like this one"
+                          currency={profile.currency}
+                        />
+                        <p className="type-caption text-text-secondary money">
+                          {c
+                            ? `Compared with ${words.previous}: ${money(c.previousPaise)}, ${c.previousCount} ${c.previousCount === 1 ? "time" : "times"}. ${
+                                c.deltaPaise === 0
+                                  ? "The same now."
+                                  : `${money(Math.abs(c.deltaPaise))} ${c.deltaPaise > 0 ? "more" : "less"} now.`
+                              }`
+                            : `Not enough data to compare yet. ${group.comparisonNote}`}
+                        </p>
+                        <details>
+                          <summary
+                            className={`inline-flex min-h-10 cursor-pointer items-center rounded-lg type-body font-medium text-muted-foreground hover:text-foreground pointer-coarse:min-h-11 ${FOCUS}`}
+                          >
+                            See the {group.transactionIds.length} entries
+                          </summary>
+                          <ul className="flex flex-col">
+                            {entriesOf(group.transactionIds).map((entry) => (
+                              <EntryCard key={entry.id} entry={entry} />
+                            ))}
+                          </ul>
+                          <Link
+                            href={hrefOf(group)}
+                            className="inline-flex min-h-11 items-center type-body font-medium text-primary underline underline-offset-2"
+                          >
+                            Open in Transactions
+                          </Link>
+                        </details>
                       </div>
-                      <p className="type-caption text-muted-foreground money">
-                        <span className="lg:hidden">
-                          {group.count} times · average {money(group.averagePaise!)}
-                          {extra.length > 0 && " · "}
-                        </span>
-                        {extra.join(" · ")}
-                      </p>
-                    </div>
-                    <span className="hidden text-right type-body money lg:block">
-                      {group.count}
-                      <span aria-hidden="true">×</span>
-                      <span className="sr-only"> times</span>
-                    </span>
-                    <span className="hidden text-right type-body money lg:block">
-                      <span className="sr-only">average </span>
-                      {money(group.averagePaise!)}
-                    </span>
-                    <span className="hidden text-right type-body font-semibold money lg:block">
-                      <span className="sr-only">total </span>
-                      {money(group.netPaise)}
-                    </span>
-                    <WhatIf
-                      group={group}
-                      name={name}
-                      span="a period like this one"
-                      currency={profile.currency}
-                    />
-                  </div>
-                  <p className="type-caption text-muted-foreground money">
-                    {c
-                      ? `Compared with ${words.previous}: ${money(c.previousPaise)}, ${c.previousCount} ${c.previousCount === 1 ? "time" : "times"}. ${
-                          c.deltaPaise === 0
-                            ? "The same now."
-                            : `${money(Math.abs(c.deltaPaise))} ${c.deltaPaise > 0 ? "more" : "less"} now.`
-                        }`
-                      : `Not enough data to compare yet. ${group.comparisonNote}`}
-                  </p>
-                  <details>
-                    <summary className="inline-flex min-h-10 cursor-pointer items-center type-body font-medium text-muted-foreground hover:text-foreground pointer-coarse:min-h-11">
-                      See the {group.transactionIds.length} entries
-                    </summary>
-                    <Surface variant="inset" className="mt-1 gap-1 p-1">
-                      <ul className="flex flex-col">
-                        {entriesOf(group.transactionIds).map((entry) => (
-                          <EntryCard key={entry.id} entry={entry} />
-                        ))}
-                      </ul>
-                      <Link
-                        href={href}
-                        className="inline-flex min-h-11 items-center self-start px-2 type-body font-medium text-primary underline underline-offset-2"
-                      >
-                        Open in Transactions
-                      </Link>
-                    </Surface>
-                  </details>
-                </li>
-              );
-            })}
-          </ul>
-          <NoteLine>
-            What-ifs are simple estimates from the median price, not advice.
-            {report.ungroupedCount > 0
-              ? ` ${report.ungroupedCount} small ${report.ungroupedCount === 1 ? "purchase has" : "purchases have"} nothing to group by in this view.`
-              : ""}
-          </NoteLine>
-        </Surface>
+                    </details>
+                  </li>
+                );
+              })}
+            </ul>
+          </Section>
+        </div>
       )}
     </>
   );

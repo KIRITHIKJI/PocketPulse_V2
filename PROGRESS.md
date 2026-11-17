@@ -523,7 +523,93 @@ dropdown for the overflow menu; 33 KB above the shell, under the 70 KB rule), `/
 
 **Open:** "No missions yet" and "No achievements yet" can't be reached with the real catalog, so
 they are built but not screenshotted. The motion test account's theme is saved as dark, so the
-level-up's light shots render dark. Missions grew 13 KB (reason above).
+level-up's light shots render dark. ~~Missions grew 13 KB (reason above).~~ (Menu loads on first open since 3E: 189 KB.)
+
+### Phase 3E — Insights and the Plan screens (2026-11-17) ✅
+
+No money logic, domain, migration or schema change. Diff check: nothing under `src/domain`,
+`src/lib` (data, actions, validation, rewards, ledger, offline, reports), `src/hooks`, `supabase`,
+`src/app/api`, `package.json` or the lockfile. No new dependency.
+
+- **Carry-over, Missions menu:** the Radix dropdown behind "⋯" moved to
+  `mission-menu-content.tsx` and loads on first open, or earlier once the browser is idle (the
+  same `useLazyModule` pattern as the header menus, so the worker saves it for offline). If it
+  can't load at all, "⋯" shows a plain "Skip this mission" button beside it instead (same
+  `changeQuest` action). `/rewards/missions` 208 → **189 KB**.
+- **Seven screens** (compositions and review in `doc/DESIGN_PLAN.md`, V2 Phase 3E), on the finance
+  tokens and 3A primitives, no deep band:
+  - Insights: net spending (`type-hero`) with the comparison sentence leads; purchases, small
+    purchases and income as one stat row; the trend under them; "Where it went" beside; findings
+    as plain sections. The six finding cards, hero box and boxed Money leaks link are gone (a text
+    link that keeps the period stays). Every row, bar and sentence still opens its entries.
+  - Money leaks: the biggest group (domain order, biggest first) leads with its total and what-if;
+    every group is one row that opens to its what-if, comparison and entries.
+  - Budgets: the total budget's spending, bar, "Ahead of pace" badge and pace line lead; "A budget
+    is a target, not reserved money." once per page (`BudgetRemaining` no longer repeats it);
+    other budgets as rows; alerts in one notice.
+  - Goals: the first active goal leads (saved of target, bar, the domain's explanation with the
+    suggested weekly or monthly amount when a target date is set); total set aside as one line;
+    other goals as rows.
+  - Safe to Spend: the daily amount leads, days and weekly limit beside it; the breakdown below
+    (balance − goals − unpaid bills, with the bills under their line − reserve = flexible money),
+    one short explanation per line. No next income date: the question and the date form in the
+    hero's place, every figure "—".
+  - Survival Mode: the status label and headline lead (the domain's past-14-days wording); the
+    allowance figures as one stat row; ways to make room as rows.
+  - Recurring: the next due item is the lead (the first item of the upcoming list, so nothing is
+    shown twice); recurring items read "scheduled next …"; happened items keep "Recorded".
+    One-off bills keep "Planned, not paid" (see Open).
+- **Shared:** `InfoTip` (Home's info disclosure, generalised) and `EmptyHero` (a screen's honest
+  empty or sparse state in its hero's place) in `src/components/layout/primitives.tsx`;
+  `IncomeDatePrompt` uses `EmptyHero`; `FigureRow` gained `valuePaise` and `children`; the
+  unused `FigureLink` was removed. Loading skeletons follow the new layouts.
+- **Also fixed:** a completed mission's XP tag (3D) was 3.26:1 in light theme (`opacity-70` on
+  secondary text); found by the a11y run once the shared account had a mission done today.
+- **Money check:** every money figure, percentage and `data-paise` value on the seven screens
+  (13 views: Insights in 5 periods, leaks in 3 views, the 5 Plan screens), read from the old build
+  (HEAD `92f84df`, rebuilt with the work stashed) and the new build on the same data, the same
+  day, on 6 test accounts (`accounts`, `report`, `transactions`, `rewards`, `motion`, `user`):
+  234 sets, 181 distinct money figures, **0 differences**. A first pass that read `textContent`
+  glued neighbouring numbers ("₹36" + "3 times" → "₹363") and was redone reading text nodes
+  separately. Test data touched: the `accounts` account got, through the UI on the old build, two
+  bills (Hostel wifi ₹450 unpaid; Lab fee ₹300 paid), a monthly expense (Music plan ₹119), a
+  monthly income (Allowance ₹6,000) and nine small purchases (chai, samosa, auto), so it holds a
+  card, a loan, a budget, a goal, a bill and recurring items.
+- **Tests changed (none weakened, no timeout raised):** `tests/unit/plan.test.tsx`
+  `BudgetRemaining` now asserts the exact "left / over target" line and that it does not repeat
+  the target note. `e2e/plan.spec.ts` budgets test: the note appears exactly once on the page
+  (and in the page note), and neither budget repeats it (was: each budget's line contains it).
+  `e2e/insights.spec.ts` Journey C: opens the leak row before its what-if, and also asserts the
+  biggest-leak hero shows the group's total and its own what-if.
+
+**Checks (final code, this machine):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 29 s |
+| `npm run typecheck` | ✅ | 10 s |
+| `npm test` | ✅ 41 files / 981 tests | 29 s |
+| `npm run build` | ✅ 42 pages (the first try stopped at the end on a Next.js security-advisory notice, see Open; the retry passed) | 20 s |
+| `npm run test:smoke` | ✅ 49 passed (against `next start` of the final build, `PW_REUSE_SERVER=1`) | 148 s |
+| While working: insights, plan, rewards e2e (Journeys C, D, E; both ledger projects) | ✅ 36 passed | 97 s |
+| While working: a11y for the 7 screens + Missions (dark + light, desktop + mobile) | first run 43 passed, 1 failed (the Missions XP tag above); after the fix ✅ 44 passed | 31 s / 32 s |
+| While working: plan, mission-row, plan-forms unit | ✅ 3 files / 35 tests | 69 s |
+| DB tests / full e2e | not run (no DB code changed; full suite not asked for) | — |
+
+**Sizes** (`scripts/route-js.mjs`, gzip KB, before = `92f84df`): `/rewards/missions` 208 →
+**189**, `/budgets` 229 → **193** (`plan/parts.tsx` imported a constant from the `@/domain`
+barrel, which pulled `zod` into the budget form's browser code), `/insights/category/[id]`
+239 → 238, `/reports` 230 → 229; every other route unchanged, shell (`/settings/data`) 175.
+Largest page above the shell: `/insights/leaks` +64, `/insights` +54 (unchanged; under 70).
+
+**Open:** Next.js 16.4.3 prints a security-advisory notice during `next build` that stops every
+other build after it finishes compiling; a retry completes. Playwright's own build step hit it
+once, so the related runs and the smoke set used `PW_REUSE_SERVER=1` against a `next start` of the
+final build. Upgrading Next.js is a dependency change outside this phase; it needs a decision.
+Recurring: one-off bills still say "Planned, not paid" (recurring items say "Scheduled"); the spec
+(§8) names only the recurring "Forecast" → "Scheduled" change, and the e2e and unit tests encode
+the bill wording. The goal completion moment on `/goals/[id]` still uses the V1 confetti burst
+(that detail page is 3F). The phone section jump on Recurring (Upcoming / Items) was kept as it was.
 
 ### Checklist for Phases 2–6
 
@@ -558,7 +644,7 @@ level-up's light shots render dark. Missions grew 13 KB (reason above).
 - [x] 3B Home
 - [x] 3C emblem directions (your choice: Sigil, revised), RankEmblem/AchievementBadge, Player status (your approval)
 - [x] 3D Missions, Achievements, Rewards, feedback moments
-- [ ] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring
+- [x] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring
 - [ ] 3F Transactions, Accounts, Categories, Reports, Reminders, Settings, auth, onboarding; mobile
       and consistency passes
 - [x] Shared signed-in shell ≤ 200 KB gzip (from 246): 175 after 3A; keep it there through 3F

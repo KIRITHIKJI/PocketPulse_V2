@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Safe to Spend while it loads: the daily estimate, the breakdown, then the form. */
+/** Safe to Spend while it loads: the daily amount leading, then the breakdown. */
 export default function SafeToSpendLoading() {
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-6">
@@ -10,11 +10,16 @@ export default function SafeToSpendLoading() {
         <Skeleton className="h-4 w-full max-w-md" />
       </div>
       <Skeleton className="h-10 w-full max-w-sm rounded-xl" />
-      <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
-        <Skeleton className="h-72 rounded-2xl" />
-        <Skeleton className="h-72 rounded-2xl" />
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-3 w-40" />
+        <Skeleton className="h-12 w-48" />
+        <Skeleton className="h-4 w-72 max-w-full" />
       </div>
-      <Skeleton className="h-40 rounded-2xl" />
+      <div className="flex flex-col gap-3 lg:max-w-3xl">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton key={index} className="h-12 w-full" />
+        ))}
+      </div>
     </div>
   );
 }

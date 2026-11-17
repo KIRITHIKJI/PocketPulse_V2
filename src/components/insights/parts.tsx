@@ -18,7 +18,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Surface } from "@/components/ui/surface";
 import type { CurrencyCode, TrendGranularity } from "@/domain";
 import { INSIGHT_PERIODS, TREND_LABELS } from "@/lib/insights-view";
 import { cn } from "@/lib/utils";
@@ -171,7 +170,10 @@ export function TrendCard({
   note: string | null;
 }) {
   return (
-    <Surface className="min-w-0" data-testid="trend-card">
+    <section
+      className="flex min-w-0 flex-col gap-stack border-t border-(--section-divider) pt-section"
+      data-testid="trend-card"
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h2 className="min-w-0 type-heading text-pretty">{title}</h2>
         {optionHrefs.length > 1 && !sparseReason && (
@@ -229,7 +231,7 @@ export function TrendCard({
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.key} className="border-t">
+                  <tr key={row.key} className="border-t border-(--section-divider)">
                     <td className="py-1.5">
                       {row.href ? (
                         <Link
@@ -251,7 +253,7 @@ export function TrendCard({
           </details>
         </>
       )}
-    </Surface>
+    </section>
   );
 }
 
@@ -261,38 +263,6 @@ export function NoteLine({ children }: { children: React.ReactNode }) {
       <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
       <span>{children}</span>
     </p>
-  );
-}
-
-/** A label and figure that opens the entries behind it. */
-export function FigureLink({
-  href,
-  label,
-  value,
-  hint,
-  testId,
-}: {
-  href: Route | null;
-  label: string;
-  value: React.ReactNode;
-  hint?: string;
-  testId?: string;
-}) {
-  const body = (
-    <>
-      <span className="type-caption text-muted-foreground">{label}</span>
-      <span className="type-heading money" data-testid={testId}>
-        {value}
-      </span>
-      {hint && <span className="type-caption text-muted-foreground">{hint}</span>}
-    </>
-  );
-  return href ? (
-    <Surface variant="interactive" asChild className="gap-0.5">
-      <Link href={href}>{body}</Link>
-    </Surface>
-  ) : (
-    <Surface className="gap-0.5">{body}</Surface>
   );
 }
 

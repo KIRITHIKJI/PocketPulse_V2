@@ -23,12 +23,16 @@ describe("BudgetRemaining", () => {
     [50_000, "₹500 left"],
     [0, "₹0 left"],
     [-12_000, "₹120 over target"],
-  ])("always says target, not reserved money beside %s", (remaining, text) => {
-    render(<BudgetRemaining remainingPaise={remaining} money={money} />);
-    const line = screen.getByTestId("budget-remaining");
-    expect(line).toHaveTextContent(text);
-    expect(line).toHaveTextContent("target, not reserved money");
-  });
+  ])(
+    "says left or over target beside %s, and leaves the target note to the page",
+    (remaining, text) => {
+      render(<BudgetRemaining remainingPaise={remaining} money={money} />);
+      const line = screen.getByTestId("budget-remaining");
+      expect(line).toHaveTextContent(new RegExp(`^${text}$`));
+      // Said once per page (doc/V2_SPEC.md §8), so never repeated on each budget.
+      expect(line).not.toHaveTextContent("reserved money");
+    },
+  );
 });
 
 describe("threshold input", () => {

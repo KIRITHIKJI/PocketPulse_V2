@@ -367,7 +367,15 @@ test("budgets alert at a chosen threshold and always say they're targets", async
   const second = custom.filter({ hasText: "of ₹2,00,000" });
   await expect(second).toHaveCount(1);
   await expect(card).toHaveCount(1);
-  await expect(card.getByTestId("budget-remaining")).toContainText("target, not reserved money");
+  // "Target, not reserved money" is said exactly once for the page, never on each budget.
+  await expect(main(page).getByText("target, not reserved money")).toHaveCount(1);
+  await expect(main(page).getByTestId("budget-target-note")).toContainText(
+    "A budget is a target, not reserved money.",
+  );
+  for (const budget of [card, second]) {
+    await expect(budget.getByTestId("budget-remaining")).toHaveText(/ (left|over target)$/);
+    await expect(budget).not.toContainText("reserved money");
+  }
 
   // ₹1,500 of ₹1,00,000 passes the 1 % threshold; nothing is blocked along the way.
   await page.goto("/add/text");

@@ -719,3 +719,91 @@ above it (muted). Achievements: with 7 badges the last row of 3 hung left on lap
 centred). Level-up: checked on a real level-up (see PROGRESS); no fix needed. The `motion`
 account's saved theme is "dark", which wins over the browser, so its "light" level-up shots render
 dark; the panel is deep in both themes by design.
+
+---
+
+## V2 — Phase 3E: Insights and the Plan screens (2026-11-17)
+
+Finance screens: the finance surface tokens and the 3A primitives (`Hero`, `Section`, `StatRow`,
+`DataList`/`DataRow`), no deep band. Page-wide rules for all seven: at most three bordered boxes on
+a laptop; one helper line per section, anything longer behind an info icon (`InfoTip`, a native
+disclosure like Home's); sparse and empty states are designed as the screen's hero (`EmptyHero`:
+label, statement, one line, one action), not a centred box with a violet icon. No figure is
+calculated in a component; every figure stays the domain result it was.
+
+### Compositions (written before coding)
+
+- **Insights.** Dominant: the period's net spending (`type-hero`, opens its entries) with the
+  comparison to the previous period as one strong sentence under it (or the honest "Not enough
+  data to compare yet"). Secondary: purchases, small purchases and income as one hairline stat
+  row; "Where it went" as category rows with a share bar (no box); the trend chart as a plain
+  section; the findings (what stands out, biggest changes, most frequent, unusual, looks
+  recurring) as plain lists in two columns. Removed: the hero box, the box around the categories,
+  the six finding cards with their stock icons, the boxed Money leaks link (now one text link that
+  keeps the period). Every row, bar and sentence still opens the exact entries.
+- **Money leaks.** Dominant: the biggest repeated purchase, its total and its what-if, open at the
+  top. Secondary: one row per group (name, times, average, total); opening a row shows its
+  comparison, its what-if and its entries. Removed: the boxed table with a what-if calculator on
+  every row at once, the per-row "compared with" sentence always on screen. Wording stays neutral.
+- **Budgets.** Dominant: the total budget's spending against its limit with one wide bar and its
+  pace ("Ahead of pace" kept). "A budget is a target, not reserved money" once under it, not on
+  every card. Secondary: other budgets as rows with a thin bar. Removed: the hero card box, a box
+  per budget, the boxed note; alerts become one quiet notice.
+- **Goals.** Dominant: the active goal's progress (saved of target, bar, and the suggested weekly
+  or monthly amount toward the date the user set). Secondary: the total set aside as one line;
+  other goals as rows. Removed: the boxed total, the card grid, the boxed rows and the note box.
+- **Safe to Spend.** Dominant: the daily amount (estimate colour, `type-hero`), with days left and
+  the weekly limit beside it. Below: a calm breakdown, balance − goals − unpaid bills − reserve =
+  flexible money, each with one short explanation, the bills under their line. Without a next
+  income date: no number, the date prompt in the hero's place. Removed: the two side-by-side
+  boxes, the collapsible box and the inset bill box.
+- **Survival Mode.** Dominant: the status headline about the past 14 days (`type-title`-sized
+  statement under its status label), then the allowance period bar. Secondary: daily and weekly
+  allowance, days left, spent today as one stat row; ways to make room as plain rows. Removed: the
+  icon tile, the two boxes, the icons on every tip.
+- **Recurring.** Dominant: the next due item, large, with its actions (it is the first item of
+  the upcoming list, so nothing is shown twice). Secondary: the rest of upcoming as date rows,
+  then what actually happened ("Recorded"), recurring items ("Scheduled" until they happen),
+  suggestions, skipped. Removed: five boxes and the boxed notice at the foot.
+
+### Screen review — all seven (with data: the `accounts` test account, holding a card, a loan,
+money lent, a monthly budget, a goal, two bills (one paid), a recurring expense and income, and
+repeated small purchases; empty: the shared `user` account). 375 and 1440 px, dark and light.
+Screenshots in `doc/screens/3E/` as `<screen>-<data|empty>-<375|1440>-<theme>.png`
+(`*-round1.png` before the fixes).
+
+1. *One dominant element in the first second?* Yes on all seven: the net spending figure, the
+   biggest repeated purchase with its what-if, the total budget's spending with its bar, the active
+   goal's saved amount, the daily amount, the status headline, the next due item. Each is the only
+   `type-hero` / `type-display` element on its screen.
+2. *Bordered boxes at once (desktop)?* Insights 1 (period picker), Money leaks 2 (period, group
+   by), Budgets 0 (the alert is a filled notice), Goals 0, Safe to Spend 0 besides the form's two
+   inputs, Survival 0, Recurring 0 besides outlined action buttons. The finding cards, hero cards,
+   per-budget and per-goal cards, the inset bill box and the boxed notes are gone.
+3. *Template without the logo?* Less so: label-over-figure heroes, hairline sections and the
+   rows read like Home; nothing is an outlined card grid. The finance screens stay deliberately
+   quiet (no emblems), so their identity is the type and the one accent.
+4. *Anything from "must not look like"?* No gradients, glows or dots added. Violet: the Add
+   button, active nav and tab, the trend bars and the Uncategorized link. Stock icons left only as
+   small chevrons, arrows and the info icon; the icon tiles before every heading are gone.
+5. *Same tokens as finished screens?* Yes: `Section`, `StatRow`/`Stat`, `type-label`,
+   `type-hero`, `--section-divider` and the finance surfaces, as on Home. New shared pieces:
+   `InfoTip` (Home's info disclosure, generalised) and `EmptyHero`.
+6. *Phone designed, light deliberate?* On phones every two-column layout becomes one ordered
+   column with the hero first; stat rows wrap two-up; the period picker is a sheet; the chart keeps
+   its axis labels at 375 px with no sideways scroll (a11y run). Light uses its own surfaces; the
+   estimate blue and income green keep their light values.
+
+**Fix round (round 1 → final).** Insights: on laptops the totals column ended after three stats
+while categories ran on, leaving a tall gap (the trend chart moved under the totals). Money leaks:
+the hero used a third of a 1,100 px row and the group rows stretched across it (hero and rows now
+side by side). Goals: nothing said the lead goal opens (chevron added). Survival: the label added a
+time scope from the status ("At risk · now") while the domain uses that status for a past-14-days
+case too, so the label could contradict the headline (scope removed; the detail line already says
+"Over the last 14 days"); at 375 px "Allowance · estimate" wrapped beside its link (shortened).
+Recurring: outlined Mark paid buttons sat 8 px left of the text column (ghost-button offset on an
+outlined button), and each upcoming row repeated its date in words beside the date mark (now for
+screen readers only). Also found in the a11y run: a completed mission's XP tag on Missions (3D)
+was dimmed with `opacity-70` to 3.26:1 in light theme (opacity removed; the secondary colour
+passes). Checked and not a fault: in round-1 shots the trend grid seemed to run past the content;
+measured in the browser the chart is exactly its section's width.

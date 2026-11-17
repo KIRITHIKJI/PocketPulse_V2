@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CalendarSearch, ChartPie, Droplets, Zap } from "lucide-react";
+import { ArrowRight, Zap } from "lucide-react";
 
 import { TodayReviewed } from "@/components/rewards/today-reviewed";
 import { PageHeader } from "@/components/layout/page-header";
 import { HubTabs } from "@/components/layout/hub-tabs";
+import { EmptyHero, InfoTip } from "@/components/layout/primitives";
 import {
   ComparisonCard,
   ComparisonLine,
@@ -13,11 +14,9 @@ import {
   StandoutCard,
   UnusualCard,
 } from "@/components/insights/insight-panels";
-import { FigureLink, NoteLine, PeriodPicker } from "@/components/insights/parts";
+import { PeriodPicker } from "@/components/insights/parts";
 import { CategorySection, HeroStat, PeriodTrend } from "@/components/insights/sections";
-import { StatePanel } from "@/components/states/state-panel";
 import { Button } from "@/components/ui/button";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import {
   buildInsights,
   formatBasisPoints,
@@ -39,9 +38,12 @@ import {
 
 export const metadata: Metadata = { title: "Insights" };
 
+const FOCUS = "outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50";
+
 /**
- * Insights (doc/DESIGN_PLAN.md §4): the period total with its comparison beside where it went,
- * then the trend, then the findings. Every figure opens the transactions behind it.
+ * Insights (doc/DESIGN_PLAN.md, V2 Phase 3E): the period's net spending with its comparison leads,
+ * where it went beside it, then the trend and the findings as plain lists. Every figure, bar and
+ * sentence opens the transactions behind it.
  */
 export default async function InsightsPage({
   searchParams,
@@ -73,14 +75,12 @@ export default async function InsightsPage({
   const scope = periodScope(period);
   const spending = { type: "spending", ...scope } as const;
   const incomeHref = historyHref({ type: "income", ...scope });
+  const hasIncome = model.income.count > 0;
 
   const header = (
     <>
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <PageHeader
-          title="Insights"
-          description="Where your money went. Every number opens the transactions behind it."
-        />
+        <PageHeader title="Insights" description="Where your money went, and what changed." />
         <div className="min-w-0 xl:shrink-0">
           <PeriodPicker
             kind={selection.kind}
@@ -95,13 +95,29 @@ export default async function InsightsPage({
     </>
   );
 
+  /** Income is never part of spending; it gets its own quiet line, still opening its entries. */
+  const incomeLine = hasIncome && (
+    <p className="type-body text-text-secondary">
+      Income {words.period}:{" "}
+      <Link
+        href={incomeHref}
+        className={`rounded-sm font-medium text-foreground underline-offset-4 hover:underline ${FOCUS}`}
+      >
+        <span className="money" data-testid="insights-income">
+          {money(model.income.paise)}
+        </span>
+      </Link>
+      , shown apart from spending.
+    </p>
+  );
+
   if (model.status !== "ready") {
     return (
       <>
         {header}
         {model.status === "no_spending" ? (
-          <StatePanel
-            icon={ChartPie}
+          <EmptyHero
+            label={`Net spending · ${words.period}`}
             title="Not enough data for insights yet"
             description="Insights appear after a few purchases. Log 3 to see your first breakdown."
             actions={
@@ -114,8 +130,8 @@ export default async function InsightsPage({
             }
           />
         ) : (
-          <StatePanel
-            icon={CalendarSearch}
+          <EmptyHero
+            label={`Net spending · ${words.period}`}
             title={`Nothing recorded ${words.period}`}
             description="You have spending in other periods. Pick another one, or look at everything."
             actions={
@@ -127,155 +143,129 @@ export default async function InsightsPage({
             }
           />
         )}
-        {model.income.count > 0 && (
-          <section aria-label="Income" className="grid gap-3 sm:grid-cols-2">
-            <FigureLink
-              href={incomeHref}
-              label={`Income ${words.period}`}
-              value={money(model.income.paise)}
-              hint="Shown separately. Income never offsets spending here."
-              testId="insights-income"
-            />
-          </section>
-        )}
+        {incomeLine}
       </>
     );
   }
 
   const { breakdown, small } = model;
   const unassigned = breakdown.categories.find((c) => c.key === UNCATEGORIZED);
-  const hasIncome = model.income.count > 0;
 
   return (
     <>
       {header}
 
-      <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
-        <Surface variant="hero" role="region" aria-label="Totals" className="min-w-0 lg:col-span-5">
-          <div className="flex flex-col gap-1">
-            <h2 className="type-caption text-muted-foreground">Net spending {words.period}</h2>
-            <Link
-              href={historyHref(spending)}
-              className="self-start rounded-lg outline-none hover:underline focus-visible:ring-[3px] focus-visible:ring-ring/50"
-            >
-              <span className="type-display money" data-testid="insights-net">
-                {money(breakdown.netPaise)}
-              </span>
-            </Link>
-            <p className="type-caption text-muted-foreground">
-              {breakdown.refundsPaise > 0 ? (
-                <>
-                  <span className="money">{money(breakdown.grossPaise)}</span> spent,{" "}
-                  <span className="money">{money(breakdown.refundsPaise)}</span> refunded
-                </>
-              ) : (
-                "Expenses minus refunds"
-              )}
-            </p>
-          </div>
-          <ComparisonLine model={model} words={words} money={money} />
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-3 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
-            <HeroStat
-              href={historyHref(spending)}
-              label="Purchases"
-              value={breakdown.expenseCount}
-              hint={
-                model.averagePaise === null
-                  ? "Average needs at least 2 purchases"
-                  : `Average ${money(model.averagePaise)}${model.medianPaise === null ? "" : ` · median ${money(model.medianPaise)}`}`
-              }
-              testId="insights-count"
-            />
-            <HeroStat
-              href={
-                small.count > 0
-                  ? historyHref({ ...spending, underPaise: small.thresholdPaise })
-                  : null
-              }
-              label={`Small, under ${money(small.thresholdPaise)}`}
-              value={money(small.netPaise)}
-              hint={`${small.count} ${small.count === 1 ? "purchase" : "purchases"}${small.shareBp === null ? "" : ` · ${formatBasisPoints(small.shareBp, 0)} of spending`}`}
-              testId="insights-small"
-            />
-            <HeroStat
-              href={hasIncome ? incomeHref : null}
-              label={`Income ${words.period}`}
-              value={hasIncome ? money(model.income.paise) : "None recorded"}
-              hint="Shown separately from spending"
-              testId={hasIncome ? "insights-income" : undefined}
-            />
-          </div>
-          {breakdown.refundsPaise > 0 && (
-            <NoteLine>
-              Refunds reduce the category of the purchase, in the period the refund happened.{" "}
+      <div className="grid gap-section lg:grid-cols-12 lg:items-start lg:gap-x-12">
+        <div className="flex min-w-0 flex-col gap-section lg:col-span-5">
+          <section aria-label="Totals" className="flex min-w-0 flex-col gap-5">
+            <div className="flex flex-col gap-1">
+              <div className="relative flex items-center gap-1">
+                <h2 className="type-label text-text-secondary">Net spending · {words.period}</h2>
+                <InfoTip label="About these figures">
+                  <p>
+                    <strong className="font-semibold">Net spending</strong> is expenses minus
+                    refunds. A refund reduces the category of its purchase, in the period the refund
+                    happened.
+                  </p>
+                  <p>Income is shown separately and never offsets spending here.</p>
+                  {unassigned && (
+                    <p>
+                      Unassigned entries are counted in every total and stay their own group, never
+                      part of another category.
+                    </p>
+                  )}
+                </InfoTip>
+              </div>
               <Link
-                href={historyHref({ type: "refund", ...scope })}
-                className="underline underline-offset-2"
+                href={historyHref(spending)}
+                className={`self-start rounded-lg hover:underline ${FOCUS}`}
               >
-                See <span className="money">{money(breakdown.refundsPaise)}</span> of refunds
+                <span className="type-hero money" data-testid="insights-net">
+                  {money(breakdown.netPaise)}
+                </span>
               </Link>
-            </NoteLine>
-          )}
-        </Surface>
+              {breakdown.refundsPaise > 0 && (
+                <p className="type-caption text-text-secondary">
+                  <span className="money">{money(breakdown.grossPaise)}</span> spent,{" "}
+                  <Link
+                    href={historyHref({ type: "refund", ...scope })}
+                    className={`rounded-sm underline underline-offset-2 ${FOCUS}`}
+                  >
+                    <span className="money">{money(breakdown.refundsPaise)}</span> refunded
+                  </Link>
+                </p>
+              )}
+            </div>
+            <ComparisonLine model={model} words={words} money={money} />
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-(--section-divider) pt-4 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+              <HeroStat
+                href={historyHref(spending)}
+                label="Purchases"
+                value={breakdown.expenseCount}
+                hint={
+                  model.averagePaise === null
+                    ? "Average needs 2 or more"
+                    : `Average ${money(model.averagePaise)}${model.medianPaise === null ? "" : ` · median ${money(model.medianPaise)}`}`
+                }
+                testId="insights-count"
+              />
+              <HeroStat
+                href={
+                  small.count > 0
+                    ? historyHref({ ...spending, underPaise: small.thresholdPaise })
+                    : null
+                }
+                label={`Under ${money(small.thresholdPaise)}`}
+                value={money(small.netPaise)}
+                hint={`${small.count} ${small.count === 1 ? "purchase" : "purchases"}${small.shareBp === null ? "" : ` · ${formatBasisPoints(small.shareBp, 0)} of spending`}`}
+                testId="insights-small"
+              />
+              <HeroStat
+                href={hasIncome ? incomeHref : null}
+                label="Income"
+                value={hasIncome ? money(model.income.paise) : "None recorded"}
+                hint="Kept apart from spending"
+                testId={hasIncome ? "insights-income" : undefined}
+              />
+            </div>
+          </section>
+          <PeriodTrend
+            subject="Spending"
+            ledger={ledger}
+            period={period}
+            today={today}
+            settings={settings}
+            requested={parseGranularity(params.trend)}
+            scope={{ type: "spending" }}
+            optionHref={(g) => insightHref("/insights", selection, `&trend=${g}`)}
+            currency={profile.currency}
+          />
+        </div>
 
         <CategorySection
           breakdown={breakdown}
           categories={categories}
           selection={selection}
           money={money}
-          className="lg:col-span-7"
+          className="lg:col-span-7 lg:border-t-0 lg:pt-0"
         />
       </div>
 
-      <PeriodTrend
-        subject="Spending"
-        ledger={ledger}
-        period={period}
-        today={today}
-        settings={settings}
-        requested={parseGranularity(params.trend)}
-        scope={{ type: "spending" }}
-        optionHref={(g) => insightHref("/insights", selection, `&trend=${g}`)}
-        currency={profile.currency}
-      />
-
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-6">
-        <div className="min-w-0 lg:col-span-2">
-          <StandoutCard model={model} words={words} />
-        </div>
+      <StandoutCard model={model} words={words} />
+      <div className="grid gap-section lg:grid-cols-2 lg:gap-x-12">
+        <ComparisonCard model={model} words={words} selection={selection} money={money} />
         <FrequentCard model={model} words={words} spending={spending} money={money} />
         <UnusualCard model={model} />
         <RecurringCard model={model} money={money} />
-        <ComparisonCard model={model} words={words} selection={selection} money={money} />
       </div>
 
-      <Surface className="min-w-0">
-        <SurfaceHeader
-          className="flex-wrap items-center"
-          title={
-            <span className="flex items-center gap-2">
-              <Droplets className="size-4 text-muted-foreground" aria-hidden="true" />
-              Money leaks
-            </span>
-          }
-          meta={`Repeated small purchases ${words.period}, with a what-if calculator.`}
-          action={
-            <Button variant="outline" size="sm" asChild>
-              <Link href={insightHref("/insights/leaks", selection)}>
-                See money leaks
-                <ArrowRight aria-hidden="true" />
-              </Link>
-            </Button>
-          }
-        />
-      </Surface>
-
-      {unassigned && (
-        <NoteLine>
-          Unassigned entries are counted in every total above and stay their own group, never part
-          of another category.
-        </NoteLine>
-      )}
+      <Link
+        href={insightHref("/insights/leaks", selection)}
+        className={`inline-flex min-h-11 items-center gap-1.5 self-start rounded-lg type-body font-medium text-text-secondary hover:text-foreground ${FOCUS}`}
+      >
+        Repeated small purchases {words.period}, with a what-if, in Money leaks
+        <ArrowRight className="size-4" aria-hidden="true" />
+      </Link>
     </>
   );
 }

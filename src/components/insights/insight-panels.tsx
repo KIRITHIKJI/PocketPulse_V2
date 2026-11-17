@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { ArrowLeftRight, ListOrdered, Repeat, Sparkles, TriangleAlert } from "lucide-react";
 
 import { RowLink } from "@/components/insights/parts";
 import { ChangeArrow, NoInsights } from "@/components/insights/sections";
-import { StatePanel } from "@/components/states/state-panel";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
+import { Section } from "@/components/layout/primitives";
 import {
   type InsightWords,
   type InsightsModel,
@@ -37,8 +35,9 @@ export function ComparisonLine({
   const { comparison } = model;
   if (!comparison?.comparable || !model.previousWindow) {
     return (
-      <p className="type-body text-muted-foreground" data-testid="compare-sparse">
-        Not enough data to compare yet. {model.comparisonNote}
+      <p className="type-body text-pretty text-text-secondary" data-testid="compare-sparse">
+        <span className="font-medium text-foreground">Not enough data to compare yet.</span>{" "}
+        {model.comparisonNote}
       </p>
     );
   }
@@ -53,16 +52,23 @@ export function ComparisonLine({
   );
   const when = `${formatLocalDate(model.previousWindow.startDate!)} to ${formatLocalDate(model.previousWindow.endDate!)}`;
   return (
-    <p className="type-body text-text-secondary" data-testid="comparison">
-      {delta === 0 ? (
-        <>The same as {words.previous ?? "before"}</>
-      ) : (
-        <>
-          <span className="font-semibold text-foreground money">{money(Math.abs(delta))}</span>{" "}
-          {delta > 0 ? "more" : "less"} than {words.previous ?? "before"}
-        </>
-      )}{" "}
-      ({previous}, {when}).
+    <p className="flex gap-2 type-body text-pretty text-text-secondary" data-testid="comparison">
+      {delta !== 0 && <ChangeArrow up={delta > 0} />}
+      <span>
+        {delta === 0 ? (
+          <span className="font-medium text-foreground">
+            The same as {words.previous ?? "before"}
+          </span>
+        ) : (
+          <>
+            <span className="font-semibold text-foreground money">{money(Math.abs(delta))}</span>{" "}
+            <span className="font-medium text-foreground">
+              {delta > 0 ? "more" : "less"} than {words.previous ?? "before"}
+            </span>
+          </>
+        )}{" "}
+        ({previous}, {when}).
+      </span>
     </p>
   );
 }
@@ -70,19 +76,11 @@ export function ComparisonLine({
 /** The model's headline sentences, each opening exactly the entries behind it. */
 export function StandoutCard({ model, words }: { model: InsightsModel; words: InsightWords }) {
   return (
-    <Surface className="min-w-0" data-testid="insight-cards">
-      <SurfaceHeader
-        title={
-          <span className="flex items-center gap-2">
-            <Sparkles className="size-4 text-muted-foreground" aria-hidden="true" />
-            What stands out
-          </span>
-        }
-      />
+    <Section className="min-w-0" data-testid="insight-cards" title="What stands out">
       {model.cards.length === 0 ? (
         <NoInsights words={words} />
       ) : (
-        <ul className="-mx-2 flex flex-col divide-y">
+        <ul className="-mx-2 flex flex-col divide-y divide-(--section-divider)">
           {model.cards.map((card) => (
             <li key={card.id} className="py-0.5">
               <RowLink href={historyHref(card.scope)} testId="insight-card">
@@ -100,7 +98,7 @@ export function StandoutCard({ model, words }: { model: InsightsModel; words: In
           ))}
         </ul>
       )}
-    </Surface>
+    </Section>
   );
 }
 
@@ -118,26 +116,23 @@ export function ComparisonCard({
 }) {
   const comparable = model.comparison?.comparable && model.previousWindow;
   return (
-    <Surface className="min-w-0" data-testid="comparison-card">
-      <SurfaceHeader
-        title={
-          <span className="flex items-center gap-2">
-            <ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden="true" />
-            Biggest changes
-          </span>
-        }
-        meta={words.previous ? `Compared with ${words.previous}` : "Compared with before"}
-      />
+    <Section
+      className="min-w-0"
+      data-testid="comparison-card"
+      title="Biggest changes"
+      meta={words.previous ? `Compared with ${words.previous}` : "Compared with before"}
+    >
       {!comparable ? (
-        <StatePanel
-          size="section"
-          title="Nothing to compare yet"
-          description="Category changes show up once an earlier period has spending too."
-        />
+        <div className="flex flex-col gap-0.5">
+          <p className="type-body font-medium">Not enough data to compare yet</p>
+          <p className="type-caption text-text-secondary">
+            Category changes show up once an earlier period has spending too.
+          </p>
+        </div>
       ) : model.changes.length === 0 ? (
-        <p className="type-body text-muted-foreground">No category changed.</p>
+        <p className="type-body text-text-secondary">No category changed.</p>
       ) : (
-        <ul className="-mx-2 flex flex-col divide-y">
+        <ul className="-mx-2 flex flex-col divide-y divide-(--section-divider)">
           {model.changes.slice(0, 5).map((item) => (
             <li key={item.key}>
               <RowLink href={insightHref(`/insights/category/${item.key}`, selection)}>
@@ -154,7 +149,7 @@ export function ComparisonCard({
           ))}
         </ul>
       )}
-    </Surface>
+    </Section>
   );
 }
 
@@ -171,19 +166,11 @@ export function FrequentCard({
   money: Money;
 }) {
   return (
-    <Surface className="min-w-0" data-testid="frequent">
-      <SurfaceHeader
-        title={
-          <span className="flex items-center gap-2">
-            <ListOrdered className="size-4 text-muted-foreground" aria-hidden="true" />
-            Most frequent
-          </span>
-        }
-      />
+    <Section className="min-w-0" data-testid="frequent" title="Most frequent">
       {model.frequent.length === 0 && model.merchants.length === 0 ? (
         <p className="type-body text-muted-foreground">Nothing has repeated yet {words.period}.</p>
       ) : (
-        <ul className="-mx-2 flex flex-col divide-y">
+        <ul className="-mx-2 flex flex-col divide-y divide-(--section-divider)">
           {[...model.frequent, ...model.merchants].map((group) => (
             <li key={`${group.by}:${group.key}`}>
               <RowLink
@@ -207,26 +194,18 @@ export function FrequentCard({
           ))}
         </ul>
       )}
-    </Surface>
+    </Section>
   );
 }
 
 /** Categories well above their usual spending, with how that was worked out. */
 export function UnusualCard({ model }: { model: InsightsModel }) {
   return (
-    <Surface className="min-w-0" data-testid="unusual">
-      <SurfaceHeader
-        title={
-          <span className="flex items-center gap-2">
-            <TriangleAlert className="size-4 text-feedback-warning" aria-hidden="true" />
-            Unusual changes
-          </span>
-        }
-      />
+    <Section className="min-w-0" data-testid="unusual" title="Unusual changes">
       {model.unusual.length === 0 ? (
         <p className="type-body text-muted-foreground">{model.unusualNote}</p>
       ) : (
-        <ul className="flex flex-col divide-y">
+        <ul className="flex flex-col divide-y divide-(--section-divider)">
           {model.unusual.map((item) => (
             <li key={item.key} className="flex flex-col gap-1 py-2 first:pt-0 last:pb-0">
               <Link
@@ -245,29 +224,25 @@ export function UnusualCard({ model }: { model: InsightsModel }) {
           ))}
         </ul>
       )}
-    </Surface>
+    </Section>
   );
 }
 
 /** Purchases that look recurring across all history. */
 export function RecurringCard({ model, money }: { model: InsightsModel; money: Money }) {
   return (
-    <Surface className="min-w-0" data-testid="recurring">
-      <SurfaceHeader
-        title={
-          <span className="flex items-center gap-2">
-            <Repeat className="size-4 text-muted-foreground" aria-hidden="true" />
-            Looks recurring
-          </span>
-        }
-        meta="A signal from your dates and amounts across all history, not a fact."
-      />
+    <Section
+      className="min-w-0"
+      data-testid="recurring"
+      title="Looks recurring"
+      meta="A signal from your dates and amounts across all history, not a fact."
+    >
       {model.recurring.length === 0 ? (
         <p className="type-body text-muted-foreground">
           No regular pattern yet. A purchase needs at least 3 evenly spaced dates to show here.
         </p>
       ) : (
-        <ul className="-mx-2 flex flex-col divide-y">
+        <ul className="-mx-2 flex flex-col divide-y divide-(--section-divider)">
           {model.recurring.map((signal) => (
             <li key={`${signal.by}:${signal.key}`}>
               <RowLink
@@ -292,6 +267,6 @@ export function RecurringCard({ model, money }: { model: InsightsModel; money: M
           ))}
         </ul>
       )}
-    </Surface>
+    </Section>
   );
 }

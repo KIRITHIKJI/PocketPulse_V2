@@ -123,6 +123,13 @@ test(
     await page.goto("/insights/leaks?period=this_month");
     const group = main(page).getByTestId("leak-group").filter({ hasText: WORD });
     await expect(group).toContainText(`₹${total}`);
+    // The account holds only these entries, so they are the biggest group, leading the screen
+    // with their own what-if.
+    const biggest = main(page).getByRole("region", { name: "Biggest repeated purchase" });
+    await expect(biggest).toContainText(`₹${total}`);
+    await expect(biggest.getByTestId("what-if")).toContainText(`₹${price} less`);
+    // One row per group; its what-if and entries open with the row.
+    await group.locator("summary").first().click();
     await expect(group.getByTestId("what-if")).toHaveText(
       `If you logged one fewer ${LABEL} entry at ₹${price} in a period like this one, you’d spend ₹${price} less.`,
     );

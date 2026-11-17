@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
 
 import { InlineAction } from "@/components/forms/inline-action";
-import { StatePanel } from "@/components/states/state-panel";
+import { EmptyHero } from "@/components/layout/primitives";
 import { Button } from "@/components/ui/button";
 import { type IncomeFrequency, proposedNextIncomeDate } from "@/domain";
 import { setNextIncomeDate } from "@/lib/actions/recurring";
@@ -11,27 +10,27 @@ import { formatLocalDate } from "@/lib/format";
 /**
  * Shown instead of a daily limit when there's no usable next income date. A passed date with a
  * regular frequency offers the next one, but only the user can accept it: nothing here guesses.
- * `form` puts the date field itself in the panel, so the fix is right where the question is.
+ * `form` puts the date field itself under the question, so the fix is right where it's asked.
+ * It stands where the screen's daily figure would be, so it takes that place's label.
  */
 export function IncomeDatePrompt({
   nextIncomeDate,
   frequency,
   today,
   form,
-  size = "page",
+  label = "Safe to Spend · daily amount",
 }: {
   nextIncomeDate: string | null;
   frequency: IncomeFrequency;
   today: string;
   form?: React.ReactNode;
-  size?: "page" | "section";
+  label?: string;
 }) {
   const proposed = nextIncomeDate ? proposedNextIncomeDate(nextIncomeDate, frequency, today) : null;
   return (
     <div data-testid="income-date-prompt">
-      <StatePanel
-        size={size}
-        icon={CalendarDays}
+      <EmptyHero
+        label={label}
         title="Add your next income date to get a daily amount"
         description={
           nextIncomeDate ? (
@@ -44,7 +43,7 @@ export function IncomeDatePrompt({
           )
         }
         actions={
-          <div className="flex w-full flex-col gap-4">
+          <div className="flex w-full max-w-xl flex-col gap-4">
             {form}
             <div className="flex flex-wrap gap-2">
               {proposed && (
