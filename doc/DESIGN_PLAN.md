@@ -807,3 +807,95 @@ screen readers only). Also found in the a11y run: a completed mission's XP tag o
 was dimmed with `opacity-70` to 3.26:1 in light theme (opacity removed; the secondary colour
 passes). Checked and not a fault: in round-1 shots the trend grid seemed to run past the content;
 measured in the browser the chart is exactly its section's width.
+
+---
+
+## V2 — Phase 3F: remaining screens, mobile and consistency passes (2026-11-17)
+
+Finance surfaces and the 3A primitives throughout; no deep band (none of these screens is a
+progression screen). Page rules as in 3E: one dominant element, sections and hairlines instead of
+boxes, one helper line per section (the rest behind `InfoTip`), honest empty states in the hero's
+place. No figure is calculated in a component.
+
+### Compositions (written before coding)
+
+- **Transactions.** Dominant: the day-grouped list (day label and that day's spending on one
+  hairline, rows under it; on laptops the same as a table without an outer box). Secondary: search,
+  one "Filters" control with the active count (folded at every width after review, open when a
+  filter is set or has an error), the count and net-spending line. Removed: the box around search
+  and filters, the box per day on phones, the boxed table and its tinted header, the boxed empty
+  states.
+- **Transaction detail / edit / full form.** Dominant: the amount (`type-hero`) with its type and
+  time; actions under it; details as hairline rows on the right on laptops, last on phones. The
+  forms sit on the page without a box. Edit's two "can't edit here" states use `EmptyHero`.
+- **Accounts.** Dominant: the net tracked total with "In wallets · You owe · Owed to you" under it
+  (the domain's `netPositionParts`, as on Home; the not-a-bank-balance note behind an info icon).
+  Secondary: Wallets, Cards and Loans as separate hairline groups (rows: name, kind and opening
+  line, balance in words, three quiet actions), archived folded at the end. Removed: the hero box,
+  the 3-column card grid, a violet icon tile per wallet, the info notice box, long helper sentences.
+- **Account detail.** Dominant: the balance in words (`type-hero`) with when it was last checked,
+  then its actions (Pay card bill; Repay / Borrow more; Got money back / Lend more; write-off or
+  forgiveness). Secondary: Check balance, Balance checks and Recent entries as plain sections.
+  Removed: four boxes; the card's "Owed on card" row (it repeated the hero; found in review).
+- **Categories.** Dominant: the category list (hairline rows, subcategories indented on a thin
+  rail). Spending / Income / Rules / Uncategorized as a quiet text tab row (filled pill for the
+  current one, so it never competes with the violet-underlined hub tabs); learned items join as a
+  tab in Phase 4B, when they exist. Removed: the side box, the inset box per subcategory list, the
+  rule and queue boxes, icons on tabs. Size: `rules-panel.tsx` imported the `@/domain` barrel
+  (zod); it now imports `categorize` and `category-tree` directly: 252 → 215 KB.
+- **Goal detail.** Dominant: the saved amount with its ring. The V1 confetti burst is gone; the
+  completion moment is the 3D style: a `GoalSeal` (the missions' round engraved frame, a check, one
+  violet dot) revealed once with `pp-emblem-reveal` (280 ms, none under reduced motion) beside a
+  message that stays until dismissed. The long note moved behind an info icon.
+- **Reports.** Dominant: the paper-like preview, the one bordered object on the page (document
+  header "PocketPulse · Spending report · period", hairline parts, small-caps part titles). Exports
+  are a quiet toolbar above it. Options are folded under one row on phones (above the paper) and
+  always open on laptops (`::details-content` made visible at `lg`, no extra JavaScript). Removed:
+  the export box, the options box, the inset definitions box, the notice box.
+- **Reminders, Settings, Privacy, Sync, Data.** Dominant: the list itself. Each box became a
+  section with a hairline; Settings shows each group's name and one line beside its controls on
+  wide screens, the jump links are a sideways row on phones and a quiet column on laptops. The
+  reminders note is one line, not a warning box; the unread mark is neutral, not violet.
+- **Welcome, auth, onboarding.** Dominant: the one form (the only box on the screen). Welcome:
+  headline and two actions, the four pillars as a hairline row without violet icon tiles.
+  Onboarding keeps its six optional steps; step markers lost their violet, the boxed note is one
+  line.
+- **Shared empty state (`StatePanel`).** The icon is neutral (`--finance-inset`, secondary text),
+  not violet; the page-size version no longer draws a box.
+
+### Screen review — all 3F screens (data: the `accounts` test account with a card, a loan, money
+lent, a goal, bills and a balance correction; empty: the shared `user` account). 375 and 1440 px,
+dark and light. Screenshots in `doc/screens/3F/` as `<screen>-<data|empty>-<375|1440>-<theme>.png`
+(public pages without data/empty), `*-round1.png` before the fixes.
+
+1. *One dominant element in the first second?* Yes: the list, the amount, the net total, the
+   balance in words, the category list, the saved amount, the paper, the list of settings, the form.
+2. *Bordered boxes at once (desktop)?* Transactions 1 (search field), Accounts 0, account detail 0
+   besides form fields, Categories 0, goal detail 0, Reports 1 (the paper), Settings 0 besides form
+   controls, auth 1 (the form).
+3. *Template without the logo?* Less so than before: label-over-figure heroes and hairline groups
+   as on Home and the 3E screens; Reports reads as a document, not a dashboard.
+4. *Anything from "must not look like"?* The confetti burst is removed. No gradients, glows or
+   dots added; violet is the primary button, the current nav item and tab, the seal's dot.
+5. *Same tokens as finished screens?* Yes: `type-label`/`type-hero`/`type-heading`,
+   `--section-divider`, `Section`, `DataList`, `InfoTip`, `EmptyHero`.
+6. *Phone designed, light deliberate?* Phones get the folded Filters and Options, sideways tab and
+   jump rows with an edge fade, stacked rows; light uses its own surfaces (the paper is white on the
+   page tone).
+
+**Fix round (round 1 → final).** Settings at 375 px overflowed by 272 px (the jump-link column had
+no `min-w-0`, so its nowrap row widened the grid). Categories at 375 px overflowed by 13 px: the
+"Uncategorized" tab's screen-reader text is absolutely positioned and escaped the scrolling tab row
+(the row is now `relative`, with the hub tabs' edge fade). Transactions on laptops showed seven
+filter fields that competed with the list (one Filters control at every width now). The card page
+said "Owed on card ₹750" twice (row removed; the hero says it). Measured after the fixes: no
+horizontal overflow on any of the 132 shots; no page errors; switches are 24 px drawn with a 44 px
+touch area (`pointer-coarse`), as before.
+
+### Consistency pass: leftovers fixed
+
+`StatePanel` violet icon and box (3B "Open"); `text-muted-foreground` → `text-text-secondary` on
+every 3F screen (one helper-text colour); default `border` → `--section-divider` on lists; in-page
+tabs restyled to match hub tabs' type and height; 44 px on the Filters control, onboarding step
+markers, auth links, category tabs; the goal page's party-popper icon. Left as is: `PlanNote`
+(inset tip) inside dialogs, which are separate objects.

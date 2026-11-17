@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inbox, ListTree, TrendingUp, WandSparkles } from "lucide-react";
 
 import type { PickerNode } from "@/components/categories/category-picker";
 import {
@@ -135,28 +134,18 @@ export default async function CategoriesPage({
     <>
       <PageHeader
         title="Categories"
-        description="Organise categories your way and set rules that sort entries for you."
+        description="How your entries are sorted, and rules that sort them for you."
         tabs="manage"
       />
-      <Tabs defaultValue={initial} className="flex flex-col gap-4 lg:gap-6">
-        <TabsList aria-label="Category sections" className="self-start">
-          <TabsTrigger value="spending">
-            <ListTree aria-hidden="true" />
-            Spending
-          </TabsTrigger>
-          <TabsTrigger value="income">
-            <TrendingUp aria-hidden="true" />
-            Income
-          </TabsTrigger>
-          <TabsTrigger value="rules">
-            <WandSparkles aria-hidden="true" />
-            Rules
-          </TabsTrigger>
+      <Tabs defaultValue={initial} className="flex flex-col gap-section">
+        <TabsList aria-label="Category sections" className="-mt-2 self-start">
+          <TabsTrigger value="spending">Spending</TabsTrigger>
+          <TabsTrigger value="income">Income</TabsTrigger>
+          <TabsTrigger value="rules">Rules</TabsTrigger>
           <TabsTrigger value="uncategorized">
-            <Inbox aria-hidden="true" />
             Uncategorized
             {queue.length > 0 && (
-              <Badge>
+              <Badge variant="outline" className="money">
                 {queue.length}
                 <span className="sr-only"> waiting</span>
               </Badge>

@@ -7,7 +7,6 @@ import { useToast } from "@/components/feedback/toast";
 import { useOffline } from "@/components/offline/offline-provider";
 import { StatePanel } from "@/components/states/state-panel";
 import { Button } from "@/components/ui/button";
-import { Surface } from "@/components/ui/surface";
 import { type CurrencyCode } from "@/domain";
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import type { QueuedOp } from "@/lib/offline/ops";
@@ -69,9 +68,9 @@ function OpRow({
         {amount && <p className="type-body font-semibold money">{amount}</p>}
         <StatusBadge status={op.status} />
       </div>
-      {op.message && <p className="type-body text-muted-foreground">{op.message}</p>}
+      {op.message && <p className="type-body text-text-secondary">{op.message}</p>}
       {op.status === "pending" && op.attempts > 0 && (
-        <p className="type-body text-muted-foreground">
+        <p className="type-body text-text-secondary">
           Couldn’t get through yet. It’ll keep trying, and it can’t be saved twice.
         </p>
       )}
@@ -118,18 +117,19 @@ function Section({
 }) {
   if (ops.length === 0) return null;
   return (
-    <Surface asChild>
-      <section aria-label={title}>
-        <h2 className="type-heading">
-          {title} <span className="type-body font-normal text-text-secondary">· {ops.length}</span>
-        </h2>
-        <ul className="flex flex-col divide-y">
-          {ops.map((op) => (
-            <OpRow key={op.seq} op={op} currency={currency} timeZone={timeZone} />
-          ))}
-        </ul>
-      </section>
-    </Surface>
+    <section
+      aria-label={title}
+      className="flex flex-col gap-stack border-t border-(--section-divider) pt-section"
+    >
+      <h2 className="type-heading">
+        {title} <span className="type-body font-normal text-text-secondary">· {ops.length}</span>
+      </h2>
+      <ul className="flex flex-col divide-y divide-(--section-divider)">
+        {ops.map((op) => (
+          <OpRow key={op.seq} op={op} currency={currency} timeZone={timeZone} />
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -142,8 +142,12 @@ export function SyncCenter({ currency, timeZone }: { currency: CurrencyCode; tim
   const synced = ops.filter((op) => op.status === "synced").reverse();
 
   return (
-    <div className="flex flex-col gap-6" data-testid="sync-center">
-      <Surface role="region" aria-labelledby="sync-status-title">
+    <div className="flex max-w-3xl flex-col gap-section" data-testid="sync-center">
+      <section
+        role="region"
+        aria-labelledby="sync-status-title"
+        className="flex flex-col gap-stack"
+      >
         <div className="flex flex-col gap-0.5">
           <h2 id="sync-status-title" className="type-heading">
             This device
@@ -183,7 +187,7 @@ export function SyncCenter({ currency, timeZone }: { currency: CurrencyCode; tim
             </Button>
           </div>
         )}
-      </Surface>
+      </section>
       <Section title="Needs your attention" ops={stuck} currency={currency} timeZone={timeZone} />
       <Section title="Waiting" ops={unstuck} currency={currency} timeZone={timeZone} />
       <Section title="Recently synced" ops={synced} currency={currency} timeZone={timeZone} />

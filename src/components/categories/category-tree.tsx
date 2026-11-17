@@ -8,7 +8,6 @@ import { SelectField } from "@/components/forms/form-parts";
 import { ConfirmAction, InlineAction } from "@/components/forms/inline-action";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import type { CategoryKind } from "@/domain";
 import { mergeCategory, moveCategory, setCategoryArchived } from "@/lib/actions/categories";
 
@@ -159,30 +158,30 @@ export function CategoryTree({
   const subCount = nodes.reduce((sum, n) => sum + n.subcategories.length, 0);
 
   return (
-    // Phones: the note and Add category first, then the tree. Desktop: the tree on the left.
-    <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
-      <Surface className="lg:col-span-4 lg:col-start-9 lg:row-start-1">
-        <SurfaceHeader
-          title={kind === "expense" ? "Spending categories" : "Income categories"}
-          meta={`${nodes.length} categories · ${subCount} subcategories`}
-        />
-        <p className="type-body text-muted-foreground">
-          {kind === "expense"
-            ? "Savings and transfers between your own wallets aren’t spending, so they never use these."
-            : "Where money comes from. Refunds aren’t income: they reduce the spending they refund."}
-        </p>
-        <div>
-          <CategoryFormDialog kind={kind} />
+    // The list is the screen: a title line with its counts and Add, one helper line, the rows.
+    <div className="flex max-w-4xl min-w-0 flex-col gap-stack">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <h2 className="type-heading">
+            {kind === "expense" ? "Spending categories" : "Income categories"}
+          </h2>
+          <p className="type-caption text-text-secondary">
+            {nodes.length} categories · {subCount} subcategories.{" "}
+            {kind === "expense"
+              ? "Savings and transfers between your own wallets never use these."
+              : "Refunds aren’t income: they reduce the spending they refund."}
+          </p>
         </div>
-      </Surface>
+        <CategoryFormDialog kind={kind} />
+      </div>
 
-      <div className="flex min-w-0 flex-col gap-4 lg:col-span-8 lg:col-start-1 lg:row-start-1 lg:gap-6">
-        <Surface className="px-0 py-1">
-          <ul className="flex flex-col divide-y">
+      <div className="flex min-w-0 flex-col gap-section">
+        <div>
+          <ul className="-mx-2 flex flex-col divide-y divide-(--section-divider) border-y border-(--section-divider)">
             {nodes.map((node, index) => (
               <li key={node.id}>
                 <details className="group" data-testid={`category-${node.name}`}>
-                  <summary className="mx-2 flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-(--duration-quick) outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 rounded-lg px-2 py-2 transition-colors duration-(--duration-quick) outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
                     <ChevronRight
                       className="size-4 shrink-0 text-muted-foreground transition-transform duration-(--duration-quick) group-open:rotate-90"
                       aria-hidden="true"
@@ -198,7 +197,7 @@ export function CategoryTree({
                       </span>
                     </span>
                   </summary>
-                  <div className="flex flex-col gap-3 px-surface pt-1 pb-3">
+                  <div className="flex flex-col gap-2 pt-1 pb-3 pl-9">
                     <div
                       className="flex flex-wrap items-center gap-1"
                       role="group"
@@ -215,8 +214,8 @@ export function CategoryTree({
                       )}
                     </div>
                     {node.subcategories.length > 0 && (
-                      <Surface variant="inset" className="gap-0 px-3 py-1">
-                        <ul className="flex flex-col divide-y">
+                      <div className="border-l border-(--section-divider) pl-3">
+                        <ul className="flex flex-col divide-y divide-(--section-divider)">
                           {node.subcategories.map((sub, subIndex) => (
                             <li
                               key={sub.id}
@@ -250,20 +249,20 @@ export function CategoryTree({
                             </li>
                           ))}
                         </ul>
-                      </Surface>
+                      </div>
                     )}
                   </div>
                 </details>
               </li>
             ))}
           </ul>
-        </Surface>
+        </div>
 
         {inactive.length > 0 && (
-          <section aria-label="Archived and merged" className="flex flex-col gap-3">
+          <section aria-label="Archived and merged" className="flex flex-col gap-2">
             <h3 className="type-heading">Archived and merged</h3>
-            <Surface className="py-1">
-              <ul className="flex flex-col divide-y">
+            <div>
+              <ul className="flex flex-col divide-y divide-(--section-divider)">
                 {inactive.map((item) => (
                   <li
                     key={item.id}
@@ -295,7 +294,7 @@ export function CategoryTree({
                   </li>
                 ))}
               </ul>
-            </Surface>
+            </div>
           </section>
         )}
       </div>

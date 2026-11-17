@@ -47,7 +47,7 @@ export function ReportOptionsForm({
           checked={options.compare}
         />
       </fieldset>
-      <details className="group rounded-xl bg-surface-inset px-3">
+      <details className="group border-y border-(--section-divider)">
         <summary className="flex min-h-11 cursor-pointer items-center type-body font-medium">
           Hide categories
           {options.hiddenCategoryIds.length > 0 ? (

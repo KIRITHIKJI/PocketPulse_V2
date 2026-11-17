@@ -25,7 +25,6 @@ import {
 } from "@/components/settings/settings-forms";
 import { PrivacyForm, ProgressForm, RemindersForm } from "@/components/settings/preference-forms";
 import { Button } from "@/components/ui/button";
-import { Surface } from "@/components/ui/surface";
 import { getProfile, getReminderPreferences, hasAnyTransactions } from "@/lib/data/queries";
 import { requestToday, requireSession } from "@/lib/data/session";
 import { timeZoneOptions } from "@/lib/format";
@@ -34,7 +33,7 @@ export const metadata: Metadata = { title: "Settings" };
 
 type Icon = typeof Cloud;
 
-/** The in-page sections, in order. Each one is a Surface below with the same `id`. */
+/** The in-page sections, in order. Each one is a section below with the same `id`. */
 const SECTIONS: { id: string; label: string; icon: Icon }[] = [
   { id: "profile", label: "Profile", icon: UserRound },
   { id: "appearance", label: "Appearance", icon: Palette },
@@ -77,21 +76,25 @@ const MORE: { href: Route; title: string; description: string; icon: Icon }[] = 
 const NAV_LINK =
   "flex min-h-11 items-center gap-2 rounded-md px-3 type-body text-text-secondary outline-none transition-colors duration-(--duration-quick) hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50";
 
+/**
+ * Jump links: a row that scrolls sideways on phones (so the settings themselves come first), a
+ * quiet sticky column on laptops. No box.
+ */
 function SettingsNav() {
   return (
     <nav aria-label="Settings sections" className="lg:sticky lg:top-24">
-      <Surface className="gap-2 p-2">
-        <ul className="grid grid-cols-2 gap-1 sm:grid-cols-4 lg:grid-cols-1">
+      <div className="flex flex-col gap-2">
+        <ul className="-mx-gutter flex [scrollbar-width:none] gap-1 overflow-x-auto px-gutter max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)] lg:mx-0 lg:flex-col lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden">
           {SECTIONS.map(({ id, label, icon: Icon }) => (
-            <li key={id}>
+            <li key={id} className="shrink-0">
               <a href={`#${id}`} className={NAV_LINK}>
-                <Icon className="size-4 shrink-0" aria-hidden="true" />
+                <Icon className="hidden size-4 shrink-0 lg:block" aria-hidden="true" />
                 <span className="truncate">{label}</span>
               </a>
             </li>
           ))}
         </ul>
-        <div className="hidden flex-col gap-1 border-t pt-2 lg:flex">
+        <div className="hidden flex-col gap-1 border-t border-(--section-divider) pt-2 lg:flex">
           <p className="px-3 pt-1 type-caption text-text-tertiary">Pages</p>
           <ul className="flex flex-col gap-1">
             {PAGES.map(({ href, label, icon: Icon }) => (
@@ -105,12 +108,13 @@ function SettingsNav() {
             ))}
           </ul>
         </div>
-      </Surface>
+      </div>
     </nav>
   );
 }
 
-function Section({
+/** One settings group: its name and one line beside the controls on laptops, a hairline above. */
+function SettingsSection({
   id,
   headingId,
   title,
@@ -124,17 +128,22 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Surface id={id} role="region" aria-labelledby={headingId} className="scroll-mt-24">
+    <section
+      id={id}
+      role="region"
+      aria-labelledby={headingId}
+      className="grid scroll-mt-24 gap-stack border-t border-(--section-divider) py-section first:border-t-0 first:pt-0 xl:grid-cols-[13rem_minmax(0,1fr)] xl:gap-x-10"
+    >
       <div className="flex min-w-0 flex-col gap-0.5">
         <h2 id={headingId} className="type-heading">
           {title}
         </h2>
         {description && (
-          <p className="type-body break-words text-muted-foreground">{description}</p>
+          <p className="type-caption break-words text-text-secondary">{description}</p>
         )}
       </div>
-      {children}
-    </Surface>
+      <div className="flex min-w-0 flex-col gap-stack">{children}</div>
+    </section>
   );
 }
 
@@ -159,7 +168,7 @@ function SubSection({
         <h3 id={headingId} className="scroll-mt-24 type-body font-medium">
           {title}
         </h3>
-        {description && <p className="type-body text-muted-foreground">{description}</p>}
+        {description && <p className="type-caption text-text-secondary">{description}</p>}
       </div>
       {children}
     </section>
@@ -192,34 +201,34 @@ export default async function SettingsPage() {
         title="Settings"
         description="Saved to your account and the same on every device."
       />
-      <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
-        <div className="lg:col-span-3">
+      <div className="grid gap-6 lg:grid-cols-12 lg:items-start lg:gap-x-12">
+        <div className="min-w-0 lg:col-span-3">
           <SettingsNav />
         </div>
-        <div className="flex min-w-0 flex-col gap-6 lg:col-span-9">
-          <Section
+        <div className="flex min-w-0 flex-col lg:col-span-9">
+          <SettingsSection
             id="profile"
             headingId="settings-profile"
             title="Profile"
             description={session.email ?? undefined}
           >
             <ProfileNameForm displayName={profile.displayName} />
-          </Section>
-          <Section
+          </SettingsSection>
+          <SettingsSection
             id="appearance"
             headingId="settings-appearance"
             title="Appearance"
             description="Saved to your account as soon as you choose."
           >
             <AppearanceSettings />
-          </Section>
-          <Section
+          </SettingsSection>
+          <SettingsSection
             id="money"
             headingId="settings-money"
             title="Money"
             description="Currency, income for planning, and what counts as small."
           >
-            <div className="flex flex-col divide-y">
+            <div className="flex flex-col divide-y divide-(--section-divider)">
               <SubSection headingId="settings-region" title="Currency & region">
                 <RegionForm
                   currency={profile.currency}
@@ -245,70 +254,72 @@ export default async function SettingsPage() {
                 <SpendingForm thresholdPaise={profile.smallPurchaseThresholdPaise} />
               </SubSection>
             </div>
-          </Section>
-          <Section
+          </SettingsSection>
+          <SettingsSection
             id="reminders"
             headingId="settings-reminders"
             title="Reminders"
             description="Optional and quiet by default."
           >
             <RemindersForm prefs={reminders} />
-          </Section>
-          <Section
+          </SettingsSection>
+          <SettingsSection
             id="progress"
             headingId="settings-progress"
             title="Progress"
             description="Rewards for logging and reviewing. Optional."
           >
             <ProgressForm showProgress={profile.showProgress} />
-          </Section>
-          <Section id="privacy" headingId="settings-privacy" title="Privacy">
+          </SettingsSection>
+          <SettingsSection id="privacy" headingId="settings-privacy" title="Privacy">
             <PrivacyForm includeNotesInReports={profile.includeNotesInReports} />
             <PageLink href="/settings/privacy">See what’s stored</PageLink>
-          </Section>
-          <Section
+          </SettingsSection>
+          <SettingsSection
             id="sync"
             headingId="settings-sync"
             title="Sync"
             description="Pending, synced and failed entries on this device."
           >
             <PageLink href="/settings/sync">Open sync</PageLink>
-          </Section>
-          <Section
+          </SettingsSection>
+          <SettingsSection
             id="data"
             headingId="settings-data"
             title="Your data"
             description="Export everything or delete your account."
           >
             <PageLink href="/settings/data">Export or delete</PageLink>
-          </Section>
-          <Surface role="region" aria-labelledby="settings-more">
+          </SettingsSection>
+          <section
+            role="region"
+            aria-labelledby="settings-more"
+            className="grid gap-stack border-t border-(--section-divider) py-section xl:grid-cols-[13rem_minmax(0,1fr)] xl:gap-x-10"
+          >
             <h2 id="settings-more" className="type-heading">
               More settings
             </h2>
-            <ul className="flex flex-col divide-y">
+            <ul className="flex flex-col divide-y divide-(--section-divider)">
               {MORE.map(({ href, title, description, icon: Icon }) => (
                 <li key={href}>
                   <Link
                     href={href}
                     className="group -mx-2 flex min-h-14 items-center gap-3 rounded-md px-2 py-2 transition-colors duration-(--duration-quick) outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-inset text-text-secondary">
-                      <Icon className="size-4" aria-hidden="true" />
-                    </span>
+                    <Icon className="size-4 shrink-0 text-text-secondary" aria-hidden="true" />
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="type-body font-medium">{title}</span>
-                      <span className="type-caption text-muted-foreground">{description}</span>
+                      <span className="type-caption text-text-secondary">{description}</span>
                     </span>
                     <ChevronRight
-                      className="size-4 shrink-0 text-muted-foreground"
+                      className="size-4 shrink-0 text-text-secondary"
                       aria-hidden="true"
                     />
                   </Link>
                 </li>
               ))}
             </ul>
-          </Surface>
+          </section>
         </div>
       </div>
     </>

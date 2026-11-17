@@ -4,7 +4,8 @@ import { CircleAlert, Lock, Sparkles, WifiOff, type LucideIcon } from "lucide-re
 import { cn } from "@/lib/utils";
 
 const VARIANTS = {
-  empty: { icon: Sparkles, tone: "bg-primary-soft text-primary", role: undefined },
+  // Neutral: violet is kept for the primary action and the current place (doc/REDESIGN_V2.md).
+  empty: { icon: Sparkles, tone: "bg-(--finance-inset) text-text-secondary", role: undefined },
   error: {
     icon: CircleAlert,
     tone: "bg-feedback-error/15 text-feedback-error",
@@ -59,9 +60,7 @@ export function StatePanel({
       data-size={size}
       className={cn(
         "flex gap-3",
-        page
-          ? "flex-col items-center rounded-2xl border bg-card/60 px-6 py-12 text-center"
-          : "items-start text-left",
+        page ? "flex-col items-center px-6 py-12 text-center" : "items-start text-left",
         className,
       )}
     >
@@ -78,7 +77,7 @@ export function StatePanel({
       <div className={cn("flex min-w-0 flex-col gap-1", page && "items-center")}>
         <h2 className="type-heading">{title}</h2>
         {description ? (
-          <div className={cn("type-body text-muted-foreground", page && "max-w-md text-balance")}>
+          <div className={cn("type-body text-text-secondary", page && "max-w-md text-balance")}>
             {description}
           </div>
         ) : null}

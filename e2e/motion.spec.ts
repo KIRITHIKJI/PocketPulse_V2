@@ -22,8 +22,13 @@ const RECORDER = () => {
   document.addEventListener(
     "animationstart",
     (event) => {
-      if (event.animationName.startsWith("pp-celebrate")) {
-        log.celebration.push(getComputedStyle(event.target as Element).animationDuration);
+      // The goal's completion moment: its seal is revealed once (the level-up's reveal).
+      const target = event.target as Element;
+      if (
+        event.animationName === "pp-emblem-reveal" &&
+        target.closest('[data-testid="goal-celebration"]')
+      ) {
+        log.celebration.push(getComputedStyle(target).animationDuration);
       }
     },
     true,
@@ -161,9 +166,9 @@ async function celebrate(page: Page) {
   await expect(message).toContainText(`You did it: ${GOAL} is complete`);
   await page.waitForTimeout(300);
   const started = await celebration(page);
-  const pieces = await message
-    .locator(".pp-celebrate-piece")
-    .evaluateAll((all) => all.filter((p) => getComputedStyle(p).display !== "none").length);
+  // The seal is there whatever the motion setting; the old confetti burst is gone everywhere.
+  await expect(message.locator("svg.pp-emblem-reveal")).toBeVisible();
+  const pieces = await message.locator(".pp-celebrate-piece").count();
   await main(page).getByRole("button", { name: "Reopen" }).click();
   await expect(main(page).getByRole("button", { name: "Mark complete" })).toBeVisible();
   return { started, pieces };
@@ -219,7 +224,7 @@ test.describe("with motion allowed", () => {
   test("the control: the celebration does animate", async ({ page }) => {
     const { started, pieces } = await celebrate(page);
     expect(Math.max(...seconds(started))).toBeGreaterThan(0.2);
-    expect(pieces).toBe(14);
+    expect(pieces).toBe(0);
   });
 
   test.describe("and the in-app setting at Reduced", () => {
@@ -230,9 +235,10 @@ test.describe("with motion allowed", () => {
       await expect(page.locator("html")).toHaveAttribute("data-motion", "reduce");
     });
 
-    test("the celebration shows its message, with no burst and no movement", async ({ page }) => {
+    test("the celebration shows its message and seal, with no movement", async ({ page }) => {
       const { started, pieces } = await celebrate(page);
       expect(pieces).toBe(0);
+      expect(started.length).toBeGreaterThan(0);
       for (const duration of seconds(started)) expect(duration).toBeLessThan(0.001);
     });
 
@@ -249,9 +255,10 @@ test.describe("with the OS set to reduce motion", () => {
     expectStill(await chartHeights(page));
   });
 
-  test("the celebration shows its message, with no burst and no movement", async ({ page }) => {
+  test("the celebration shows its message and seal, with no movement", async ({ page }) => {
     const { started, pieces } = await celebrate(page);
     expect(pieces).toBe(0);
+    expect(started.length).toBeGreaterThan(0);
     for (const duration of seconds(started)) expect(duration).toBeLessThan(0.001);
   });
 
@@ -269,7 +276,7 @@ test.describe("with the OS set to reduce motion", () => {
     test("the choice in the app wins: the celebration animates", async ({ page }) => {
       const { started, pieces } = await celebrate(page);
       expect(Math.max(...seconds(started))).toBeGreaterThan(0.2);
-      expect(pieces).toBe(14);
+      expect(pieces).toBe(0);
     });
   });
 });

@@ -354,3 +354,36 @@ export function MissionGlyph({
     </svg>
   );
 }
+
+/**
+ * A completed savings goal's seal: the missions' round engraved frame with a check cut into it
+ * and one violet dot. Shown once in the goal's quiet completion moment.
+ */
+export function GoalSeal({
+  size,
+  label,
+  className,
+}: NameProps & { size: number; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 240 240"
+      width={size}
+      height={size}
+      className={cn("shrink-0", className)}
+      {...a11y(label)}
+    >
+      <Cut outline={ROUND} />
+      <polygon points={points(ROUND)} fill="none" stroke="var(--emblem-line)" />
+      <polygon points={points(ROUND_WELL)} fill="var(--emblem-well)" />
+      <path
+        d="M84 122l24 24 48-52"
+        fill="none"
+        stroke="var(--emblem-hi)"
+        strokeWidth={10}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx={C} cy={182} r={6} fill="var(--emblem-accent)" />
+    </svg>
+  );
+}

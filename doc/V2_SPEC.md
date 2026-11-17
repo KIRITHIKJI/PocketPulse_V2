@@ -791,15 +791,26 @@ wasn't run.
       account kind).
 - [ ] Full browser suite: one clean run.
 
-**Phase 3**
-- [ ] Sidebar has eight links and one Add button; it fits 1366×768 and 1440×900 without scrolling.
-- [ ] Every V1 URL still works; every feature is reachable in ≤ 2 taps on mobile.
-- [ ] Each screen passes the REDESIGN_V2 screen review (one dominant element, ≤ 3 bordered boxes on
-      desktop, phone layout designed, light theme deliberate) with screenshots at 375 and 1440 px.
-- [ ] a11y spec: no axe violations, no horizontal overflow, 44 px touch targets.
-- [ ] Emblems and badges are inline SVG; you approved the direction and Player status.
-- [ ] No money logic, domain function or schema changed (diff check).
-- [ ] Shared signed-in shell ≤ 200 KB gzip (section 9, target 7); no page more than 70 KB on top.
+**Phase 3** (verified at the end of 3F, 2026-11-17; how in brackets)
+- [x] Sidebar has eight links and one Add button; it fits 1366×768 and 1440×900 without scrolling.
+      (`e2e/shell.spec.ts` navigation test and "sidebar fits" test, in the full suite run of 3F.)
+- [x] Every V1 URL still works; every feature is reachable in ≤ 2 taps on mobile. (`e2e/routes.ts`
+      list loaded by `a11y.spec.ts` at all four widths, status 200; More → hub screen in two taps,
+      `shell.spec.ts`; full suite run of 3F.)
+- [x] Each screen passes the REDESIGN_V2 screen review with screenshots at 375 and 1440 px.
+      (`doc/DESIGN_PLAN.md` 3A–3F reviews, each with a fix round; `doc/screens/3A`–`3F`; 3F:
+      132 shots, dark and light, with data and empty.)
+- [x] a11y spec: no axe violations, no horizontal overflow, 44 px touch targets. (`a11y.spec.ts`
+      in the full suite run of 3F; overflow and target sizes also measured on every 3F shot at
+      375 px: no overflow; the only targets under 44 px drawn are switches, whose touch area is
+      44 px via `pointer-coarse`; text links inside sentences are exempt.)
+- [x] Emblems and badges are inline SVG; you approved the direction and Player status. (3C.)
+- [x] No money logic, domain function or schema changed (diff check). (3A–3F each: nothing under
+      `src/domain` except 3C's approved move, `src/lib/ledger|data|actions|validation|offline|reports`,
+      `src/app/api`, `supabase`; 3F money check: old vs new build, identical figures and CSVs.)
+- [x] Shared signed-in shell ≤ 200 KB gzip; no page more than 70 KB on top. (`scripts/route-js.mjs`
+      at the end of 3F: shell `/settings/data` 175 KB; largest page above it `/goals/[id]` +68,
+      `/categories` +40 after its fix.)
 
 **Phase 4**
 - [ ] Every feed item links to the exact entries behind it, and their sum equals the figure shown.

@@ -5,9 +5,9 @@ import { ArrowLeft } from "lucide-react";
 
 import { CheckBalance, LoanEndAction, TransferAction } from "@/components/accounts/account-actions";
 import { PageHeader } from "@/components/layout/page-header";
+import { DataList, DataRow, Section } from "@/components/layout/primitives";
 import { FigureRow, PlanNote } from "@/components/plan/parts";
 import { Button } from "@/components/ui/button";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import {
   balanceWording,
   cardFigures,
@@ -88,43 +88,45 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
         description={`${ACCOUNT_KIND_LABELS[account.kind]}${account.archivedAt ? " · archived" : ""}`}
       />
 
-      <Surface variant="hero" className="gap-1">
-        <h2 className="type-body text-muted-foreground">Balance · now</h2>
-        <p className="type-display money" data-testid="account-balance" data-paise={balance ?? ""}>
+      <section aria-labelledby="account-balance-label" className="flex flex-col gap-1">
+        <h2 id="account-balance-label" className="type-label text-text-secondary">
+          Balance · now
+        </h2>
+        <p className="type-hero money" data-testid="account-balance" data-paise={balance ?? ""}>
           {balance === null
             ? `Starts ${formatLocalDate(account.openingBalanceDate)}`
             : balanceWording(account, balance, money)}
         </p>
-        <p className="type-body text-muted-foreground" data-testid="account-checked">
+        <p className="type-body text-text-secondary" data-testid="account-checked">
           {latest
             ? `Checked ${formatDateTime(latest.asOf, profile.timeZone)}: ${STATUS_WORDS[latest.status]}`
             : "Not checked against a real balance yet"}
         </p>
-        {account.kind === "credit_card" && balance !== null && (
-          <dl className="mt-2 divide-y">
-            <FigureRow
-              label="Owed on card"
-              value={money(cardFigures(account, balance).owedPaise)}
-              testId="card-owed"
-            />
-            {account.creditLimitPaise !== null && (
-              <FigureRow
-                label="Available credit"
-                value={money(cardFigures(account, balance).availablePaise!)}
-                explanation={`Limit ${money(account.creditLimitPaise)} minus what’s owed.`}
-              />
-            )}
-            {(account.statementDay !== null || account.dueDay !== null) && (
-              <FigureRow
-                label="Statement day · payment due day"
-                value={`${account.statementDay ?? "—"} · ${account.dueDay ?? "—"}`}
-                explanation="Days of the month."
-              />
-            )}
-          </dl>
-        )}
+        {/* What's owed is the balance above, in words; these are the card's other figures. */}
+        {account.kind === "credit_card" &&
+          balance !== null &&
+          (account.creditLimitPaise !== null ||
+            account.statementDay !== null ||
+            account.dueDay !== null) && (
+            <dl className="mt-3 max-w-xl divide-y divide-(--section-divider) border-y border-(--section-divider)">
+              {account.creditLimitPaise !== null && (
+                <FigureRow
+                  label="Available credit"
+                  value={money(cardFigures(account, balance).availablePaise!)}
+                  explanation={`Limit ${money(account.creditLimitPaise)} minus what’s owed.`}
+                />
+              )}
+              {(account.statementDay !== null || account.dueDay !== null) && (
+                <FigureRow
+                  label="Statement day · payment due day"
+                  value={`${account.statementDay ?? "—"} · ${account.dueDay ?? "—"}`}
+                  explanation="Days of the month."
+                />
+              )}
+            </dl>
+          )}
         {!account.archivedAt && balance !== null && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {account.kind === "credit_card" && (
               <TransferAction
                 {...transfer}
@@ -226,14 +228,14 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             )}
           </div>
         )}
-      </Surface>
+      </section>
 
       {balance !== null && (
-        <Surface>
-          <SurfaceHeader
-            title="Check balance"
-            meta="Compare with what your bank, UPI app or wallet really shows."
-          />
+        <Section
+          title="Check balance"
+          meta="Compare with what your bank, UPI app or wallet really shows."
+          className="max-w-3xl"
+        >
           <CheckBalance
             accountId={id}
             accountName={account.name}
@@ -244,17 +246,19 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
             today={today}
             nowTime={toLocalTime(now, profile.timeZone)}
           />
-        </Surface>
+        </Section>
       )}
 
       {checks.length > 0 && (
-        <Surface>
-          <SurfaceHeader title="Balance checks" />
-          <ul className="divide-y" data-testid="check-history">
+        <Section title="Balance checks" className="max-w-3xl">
+          <ul className="divide-y divide-(--section-divider)" data-testid="check-history">
             {checks.map((check) => (
-              <li key={check.id} className="flex flex-wrap justify-between gap-2 py-2 type-body">
+              <li
+                key={check.id}
+                className="flex min-h-11 flex-wrap items-center justify-between gap-2 py-2 type-body"
+              >
                 <span>{formatDateTime(check.asOf, profile.timeZone)}</span>
-                <span className="text-muted-foreground">
+                <span className="text-text-secondary">
                   {check.differencePaise === 0
                     ? "matched"
                     : `off by ${money(Math.abs(check.differencePaise))}, ${STATUS_WORDS[check.status]}`}
@@ -262,45 +266,37 @@ export default async function AccountPage({ params }: { params: Promise<{ id: st
               </li>
             ))}
           </ul>
-        </Surface>
+        </Section>
       )}
 
-      <Surface>
-        <SurfaceHeader
-          title="Recent entries"
-          meta={
-            <Link href={`/transactions?account=${id}`} className="underline underline-offset-4">
-              See all
-            </Link>
-          }
-        />
+      <Section
+        title="Recent entries"
+        className="max-w-3xl"
+        action={
+          <Button variant="ghost" size="sm" asChild className="-mr-2">
+            <Link href={`/transactions?account=${id}`}>See all</Link>
+          </Button>
+        }
+      >
         {entries.length === 0 ? (
-          <p className="type-body text-muted-foreground">Nothing recorded on this account yet.</p>
+          <p className="type-body text-text-secondary">Nothing recorded on this account yet.</p>
         ) : (
-          <ul className="divide-y" data-testid="account-entries">
+          <DataList data-testid="account-entries">
             {entries.slice(0, RECENT).map((tx) => {
               const view = entryView(tx, ctx);
               return (
-                <li key={tx.id}>
-                  <Link
-                    href={`/transactions/${tx.id}`}
-                    className="flex min-h-11 items-center justify-between gap-3 py-2"
-                  >
-                    <span className="min-w-0">
-                      <span className="block truncate type-body">{view.title}</span>
-                      <span className="type-caption text-muted-foreground">
-                        {formatDateTime(tx.occurredAt, profile.timeZone)}
-                        {view.walletLabel ? ` · ${view.walletLabel}` : ""}
-                      </span>
-                    </span>
-                    <span className="shrink-0 type-body money">{view.amountLabel}</span>
-                  </Link>
-                </li>
+                <DataRow
+                  key={tx.id}
+                  href={`/transactions/${tx.id}`}
+                  title={view.title}
+                  detail={`${formatDateTime(tx.occurredAt, profile.timeZone)}${view.walletLabel ? ` · ${view.walletLabel}` : ""}`}
+                  value={view.amountLabel}
+                />
               );
             })}
-          </ul>
+          </DataList>
         )}
-      </Surface>
+      </Section>
     </>
   );
 }

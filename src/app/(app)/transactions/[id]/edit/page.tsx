@@ -2,13 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { randomUUID } from "node:crypto";
-import { PiggyBank, Scale } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { StatePanel } from "@/components/states/state-panel";
+import { EmptyHero } from "@/components/layout/primitives";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { Button } from "@/components/ui/button";
-import { Surface } from "@/components/ui/surface";
 import { indexById, isAdjustment, occurredAtMs, toLocalDate, toLocalTime } from "@/domain";
 import { loadEntryKit } from "@/lib/data/entry-kit";
 import { getLedgerRecord, getSpendingLedger } from "@/lib/data/queries";
@@ -32,8 +30,7 @@ export default async function EditTransactionPage({ params }: { params: Promise<
     return (
       <>
         <PageHeader title="Edit entry" />
-        <StatePanel
-          icon={Scale}
+        <EmptyHero
           title="A balance correction can’t be edited"
           description="It was worked out from one balance check. Delete it from the entry, then check the balance again."
           actions={
@@ -50,8 +47,7 @@ export default async function EditTransactionPage({ params }: { params: Promise<
     return (
       <>
         <PageHeader title="Edit entry" />
-        <StatePanel
-          icon={PiggyBank}
+        <EmptyHero
           title="Savings moves are managed from their goal"
           description="Money set aside for a goal (or released from it) isn’t spending or income, so it’s changed from the goal itself rather than this form."
           actions={
@@ -92,7 +88,7 @@ export default async function EditTransactionPage({ params }: { params: Promise<
         title="Edit entry"
         description="Balances, history and category totals update as soon as you save."
       />
-      <Surface className="w-full max-w-3xl">
+      <div className="w-full max-w-3xl">
         <TransactionForm
           kit={kit}
           mode="edit"
@@ -121,7 +117,7 @@ export default async function EditTransactionPage({ params }: { params: Promise<
             tags: record.tags.join(", "),
           }}
         />
-      </Surface>
+      </div>
     </>
   );
 }

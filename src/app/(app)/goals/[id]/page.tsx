@@ -1,21 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowDownLeft, ArrowUpRight, PartyPopper, PiggyBank } from "lucide-react";
+import { ArrowLeft, ArrowDownLeft, ArrowUpRight, CircleCheck } from "lucide-react";
 
 import { CategoryBadge } from "@/components/categories/category-icon";
 import { Notice } from "@/components/feedback/notice";
 import { PageHeader } from "@/components/layout/page-header";
+import { InfoTip, Section } from "@/components/layout/primitives";
 import { GoalStatusActions } from "@/components/plan/goal-actions";
 import { GoalPurchaseDialog } from "@/components/plan/goal-purchase-dialog";
 import { GoalMoveDialog } from "@/components/plan/goal-move-dialog";
 import { GoalFormDialog } from "@/components/plan/goal-form";
 import { GoalReleaseNotes } from "@/components/plan/goal-release-notes";
-import { FigureRow, PlanNote, ProgressRing } from "@/components/plan/parts";
-import { StatePanel } from "@/components/states/state-panel";
+import { FigureRow, ProgressRing } from "@/components/plan/parts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import { type ContributionCadence, formatBasisPoints, goalMoves, goalProgress } from "@/domain";
 import { loadEntryKit } from "@/lib/data/entry-kit";
 import { loadPlan } from "@/lib/data/plan";
@@ -87,15 +86,15 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
         currency={profile.currency}
       />
 
-      <div className="grid gap-4 lg:grid-cols-5 lg:gap-6">
-        <Surface variant="hero" className="min-w-0 lg:col-span-3">
-          <div className="flex items-center gap-4">
+      <div className="grid gap-section lg:grid-cols-5 lg:gap-x-12">
+        <section aria-label="Progress" className="flex min-w-0 flex-col gap-4 lg:col-span-3">
+          <div className="flex items-center gap-5">
             <ProgressRing bp={done ? 10_000 : progress.progressBp} size={104} tone="earmark">
               <CategoryBadge icon={goal.icon ?? "piggy-bank"} color={null} />
             </ProgressRing>
             <div className="flex min-w-0 flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="type-display text-money-earmark money" data-testid="goal-saved">
+                <p className="type-hero text-money-earmark money" data-testid="goal-saved">
                   {money(progress.savedPaise)}
                 </p>
                 {goal.status !== "active" && (
@@ -112,12 +111,12 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
           </div>
           {progress.completed && goal.status === "active" && (
             <div data-testid="goal-reached">
-              <Notice tone="success" icon={PartyPopper}>
+              <Notice tone="success" icon={CircleCheck}>
                 You’ve reached your target. Mark it complete when you’re ready.
               </Notice>
             </div>
           )}
-          <dl className="divide-y">
+          <dl className="divide-y divide-(--section-divider) border-y border-(--section-divider)">
             <FigureRow
               label="Remaining"
               value={money(progress.remainingPaise)}
@@ -129,7 +128,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
               explanation={progress.explanation}
             />
           </dl>
-          <div className="flex flex-wrap gap-2 border-t pt-4">
+          <div className="flex flex-wrap gap-2">
             {goal.status === "active" && (
               <GoalMoveDialog
                 goalId={goal.id}
@@ -166,27 +165,33 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
               Resume this goal to set more aside. Its money stays set aside.
             </Notice>
           )}
-          <PlanNote>
-            Setting money aside lowers Safe to Spend, not your tracked balance. Bought what you
-            saved for? “I bought it” records the real expense and releases the money in one step, so
-            it’s subtracted once.
-          </PlanNote>
-        </Surface>
+          <div className="relative flex items-center gap-1">
+            <p className="type-body text-text-secondary">
+              Setting money aside lowers Safe to Spend, not your tracked balance.
+            </p>
+            <InfoTip label="About goal money">
+              <p>
+                Bought what you saved for? “I bought it” records the real expense and releases the
+                money in one step, so it’s subtracted once.
+              </p>
+            </InfoTip>
+          </div>
+        </section>
 
-        <Surface className="min-w-0 lg:col-span-2">
-          <SurfaceHeader
-            title="History"
-            meta="Earmarks only. These are never income or spending."
-          />
+        <Section
+          title="History"
+          meta="Earmarks only. These are never income or spending."
+          className="min-w-0 lg:col-span-2 lg:border-t-0 lg:pt-0"
+        >
           {moves.length === 0 ? (
-            <StatePanel
-              size="section"
-              icon={PiggyBank}
-              title="Nothing set aside yet"
-              description="Every allocation and release will show here."
-            />
+            <p className="type-body text-text-secondary">
+              Nothing set aside yet. Every allocation and release will show here.
+            </p>
           ) : (
-            <ul className="-mx-2 flex flex-col divide-y" data-testid="goal-history">
+            <ul
+              className="-mx-2 flex flex-col divide-y divide-(--section-divider)"
+              data-testid="goal-history"
+            >
               {moves.map((tx) => {
                 const allocation = tx.type === "allocation";
                 return (
@@ -230,7 +235,7 @@ export default async function GoalDetailPage({ params }: { params: Promise<{ id:
               })}
             </ul>
           )}
-        </Surface>
+        </Section>
       </div>
     </>
   );

@@ -49,6 +49,20 @@ test.afterAll(async ({ browser, account }) => {
   await page.close();
 });
 
+/**
+ * On phones the options start folded under one "Options" row (the preview comes first); on
+ * laptops they always show.
+ */
+async function openOptions(page: Page) {
+  const toggle = main(page).locator('aside[aria-label="Report options"] > details > summary');
+  const box = main(page).getByRole("checkbox", { name: "Every entry" });
+  if (await toggle.isVisible()) {
+    await expect(box).toBeHidden();
+    await toggle.click();
+  }
+  await expect(box).toBeVisible();
+}
+
 test(
   "Journey F: review, choose, then export a report that adds up",
   { tag: ["@phone", "@smoke"] },
@@ -68,6 +82,7 @@ test(
 
     // Choosing entries shows them; nothing has left the device.
     await page.goto("/reports?period=this_month&details=0");
+    await openOptions(page);
     await main(page).getByRole("checkbox", { name: "Every entry" }).check();
     await main(page).getByRole("button", { name: "Update preview" }).click();
     await expect(main(page).getByTestId("report-entries")).toContainText(new RegExp(WORD, "i"));

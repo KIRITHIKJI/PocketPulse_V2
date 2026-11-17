@@ -28,6 +28,13 @@ describe("StatePanel", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByRole("heading", { name: "Nothing yet" })).toBeInTheDocument();
   });
+
+  it("draws a plain empty state in neutral tones: violet is only for actions and the current place", () => {
+    const { container } = render(<StatePanel title="Nothing yet" />);
+    const panel = container.querySelector("section")!;
+    expect(panel.innerHTML).not.toMatch(/primary/);
+    expect(panel.className).not.toMatch(/\bborder\b/);
+  });
 });
 
 describe("BottomNav", () => {

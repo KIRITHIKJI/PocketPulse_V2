@@ -41,19 +41,17 @@ export default async function WelcomePage({
       {deleted === "1" && (
         <>
           <ForgetDevice accountDeleted />
-          <p role="status" className="rounded-lg border bg-card p-3 text-sm">
+          <p role="status" className="type-body text-text-secondary">
             Your account and everything in it have been deleted.
           </p>
         </>
       )}
       <section className="flex max-w-3xl flex-col gap-6">
-        <p className="w-fit rounded-full border bg-card/60 px-3 py-1 text-sm text-muted-foreground">
-          Track. Understand. <span className="text-positive">Save.</span>
-        </p>
+        <p className="type-label text-text-secondary">Track. Understand. Save.</p>
         <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl">
-          Know where every <span className="text-primary">₹10</span> goes.
+          Know where every <span className="money">₹10</span> goes.
         </h1>
-        <p className="max-w-xl text-lg text-pretty text-muted-foreground">
+        <p className="max-w-xl text-lg text-pretty text-text-secondary">
           PocketPulse makes logging tiny expenses effortless, shows you patterns without judgement,
           and helps your pocket money last.
         </p>
@@ -66,18 +64,21 @@ export default async function WelcomePage({
           </Button>
         </div>
       </section>
-      <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="grid gap-x-8 border-t border-(--section-divider) sm:grid-cols-2 lg:grid-cols-4">
         {PILLARS.map(({ icon: Icon, title, body }) => (
-          <li key={title} className="flex flex-col gap-3 rounded-2xl border bg-card/70 p-5">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-primary-soft text-primary">
-              <Icon className="size-5" aria-hidden="true" />
-            </span>
-            <h2 className="font-semibold">{title}</h2>
-            <p className="text-sm text-muted-foreground">{body}</p>
+          <li
+            key={title}
+            className="flex flex-col gap-1.5 border-b border-(--section-divider) py-5 lg:border-b-0"
+          >
+            <h2 className="flex items-center gap-2 type-body font-medium">
+              <Icon className="size-4 text-text-secondary" aria-hidden="true" />
+              {title}
+            </h2>
+            <p className="type-body text-text-secondary">{body}</p>
           </li>
         ))}
       </ul>
-      <p className="max-w-2xl text-sm text-muted-foreground">
+      <p className="max-w-2xl type-caption text-text-secondary">
         PocketPulse reports only what you enter. Your tracked balance is not a verified bank
         balance, and no bank connection is required.
       </p>

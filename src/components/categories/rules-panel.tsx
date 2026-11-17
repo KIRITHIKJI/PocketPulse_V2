@@ -15,7 +15,7 @@ import { ConfirmAction } from "@/components/forms/inline-action";
 import { useDialogAction } from "@/components/forms/use-dialog-action";
 import { StatePanel } from "@/components/states/state-panel";
 import { Button } from "@/components/ui/button";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
+import { Section } from "@/components/layout/primitives";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { type Category, type CategoryRule, categoryLabel, suggestCategory } from "@/domain";
+// The domain modules directly, not the `@/domain` barrel: the barrel brings the schemas (zod)
+// into this page's browser code.
+import type { Category, CategoryRule } from "@/domain";
+import { suggestCategory } from "@/domain/categorize";
+import { categoryLabel } from "@/domain/category-tree";
 import { deleteRule, saveRule } from "@/lib/actions/categories";
 
 function RuleFormDialog({ rule, tree }: { rule?: CategoryRule; tree: PickerNode[] }) {
@@ -119,11 +123,7 @@ function SuggestionTester({
     ? suggestCategory({ description: text, kind: "expense" }, { categories, rules })
     : null;
   return (
-    <Surface className="min-w-0 lg:col-span-5">
-      <div className="flex items-center gap-2">
-        <WandSparkles className="size-4 text-primary" aria-hidden="true" />
-        <h2 className="type-heading">Try a description</h2>
-      </div>
+    <Section title="Try a description" className="min-w-0 lg:col-span-5 lg:border-t-0 lg:pt-0">
       <Field
         id="rule-tester"
         name="tester"
@@ -135,25 +135,25 @@ function SuggestionTester({
       />
       <p className="type-body" aria-live="polite">
         {!text.trim() ? (
-          <span className="text-muted-foreground">
+          <span className="text-text-secondary">
             Suggestions use your rules first, then what you chose before, then common words.
           </span>
         ) : suggestion ? (
           <>
             <span className="font-medium">{categoryLabel(suggestion, byId)}</span>
-            <span className="text-muted-foreground"> — {suggestion.reason}</span>
+            <span className="text-text-secondary"> — {suggestion.reason}</span>
           </>
         ) : (
-          <span className="text-muted-foreground">
+          <span className="text-text-secondary">
             No suggestion — it would go to the Uncategorized queue.
           </span>
         )}
       </p>
-      <p className="type-caption text-muted-foreground">
+      <p className="type-caption text-text-secondary">
         This preview checks rules and common words only; entry forms also learn from your past
         choices.
       </p>
-    </Surface>
+    </Section>
   );
 }
 
@@ -168,13 +168,14 @@ export function RulesPanel({
 }) {
   const byId = new Map(categories.map((c) => [c.id, c]));
   return (
-    <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
-      <Surface className="min-w-0 lg:col-span-7">
-        <SurfaceHeader
-          title="Your rules"
-          meta="Rules make categorising automatic, e.g. “chai” → Food & Drinks › Tea."
-          action={rules.length > 0 ? <RuleFormDialog tree={tree} /> : undefined}
-        />
+    <div className="grid gap-section lg:grid-cols-12 lg:items-start lg:gap-x-12">
+      <Section
+        divided={false}
+        title="Your rules"
+        meta="Rules make categorising automatic, e.g. “chai” → Food & Drinks › Tea."
+        action={rules.length > 0 ? <RuleFormDialog tree={tree} /> : undefined}
+        className="min-w-0 lg:col-span-7"
+      >
         {rules.length === 0 ? (
           <StatePanel
             size="section"
@@ -184,20 +185,20 @@ export function RulesPanel({
             actions={<RuleFormDialog tree={tree} />}
           />
         ) : (
-          <ul className="-my-1 flex flex-col divide-y">
+          <ul className="flex flex-col divide-y divide-(--section-divider) border-y border-(--section-divider)">
             {rules.map((rule) => (
               <li key={rule.id} className="flex min-h-14 flex-wrap items-center gap-2 py-2">
                 <p className="min-w-0 flex-1 type-body">
-                  <span className="text-muted-foreground">
+                  <span className="text-text-secondary">
                     {rule.matchField === "merchant" ? "Merchant" : "Description"} has
                   </span>{" "}
                   <span className="font-medium">“{rule.matchText}”</span>{" "}
-                  <span className="text-muted-foreground">→</span>{" "}
+                  <span className="text-text-secondary">→</span>{" "}
                   <span className="font-medium">
                     {categoryLabel(rule, byId) ?? "a category that no longer exists"}
                   </span>
                   {rule.priority !== 0 && (
-                    <span className="text-muted-foreground"> · priority {rule.priority}</span>
+                    <span className="text-text-secondary"> · priority {rule.priority}</span>
                   )}
                 </p>
                 <span className="flex items-center">
@@ -225,7 +226,7 @@ export function RulesPanel({
             ))}
           </ul>
         )}
-      </Surface>
+      </Section>
       <SuggestionTester categories={categories} rules={rules} />
     </div>
   );

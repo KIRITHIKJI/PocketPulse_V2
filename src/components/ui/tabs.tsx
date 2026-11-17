@@ -11,7 +11,10 @@ function TabsList({ className, ...props }: React.ComponentProps<typeof TabsPrimi
   return (
     <TabsPrimitive.List
       className={cn(
-        "inline-flex max-w-full flex-wrap gap-1 rounded-xl border bg-muted/60 p-1",
+        // In-page sections: a quiet text row, so it never competes with a hub's underlined tabs.
+        // `relative` keeps screen-reader-only text inside the scrolling row, so it can't widen the
+        // page; on phones the row fades at the edge, like the hub tabs.
+        "relative flex max-w-full [scrollbar-width:none] gap-1 overflow-x-auto max-sm:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)] max-sm:pr-8 [&::-webkit-scrollbar]:hidden",
         className,
       )}
       {...props}
@@ -23,7 +26,7 @@ function TabsTrigger({ className, ...props }: React.ComponentProps<typeof TabsPr
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-medium whitespace-nowrap text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm pointer-coarse:min-h-11 [&_svg]:size-4",
+        "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-3.5 type-body font-medium whitespace-nowrap text-text-secondary transition-colors duration-(--duration-quick) outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=active]:bg-(--finance-inset) data-[state=active]:text-foreground [&_svg]:size-4",
         className,
       )}
       {...props}

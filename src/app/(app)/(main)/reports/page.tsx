@@ -12,7 +12,6 @@ import { Summary } from "@/components/reports/report-summary";
 import { StatePanel } from "@/components/states/state-panel";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import {
   formatBasisPoints,
   hiddenRowLabel,
@@ -44,8 +43,11 @@ function PreviewPart({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex min-w-0 flex-col gap-2 border-t pt-stack" data-testid={testId}>
-      <h3 className="type-heading">{title}</h3>
+    <section
+      className="flex min-w-0 flex-col gap-2 border-t border-(--section-divider) pt-stack"
+      data-testid={testId}
+    >
+      <h3 className="type-label text-text-secondary">{title}</h3>
       {children}
     </section>
   );
@@ -81,20 +83,42 @@ export default async function ReportsPage({
         description="Review the numbers, choose what to include, then export. Nothing is sent automatically."
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,20rem)_minmax(0,45rem)] lg:items-start lg:gap-6">
-        {/* The preview comes first in the page, so phones see the answer before the options. */}
-        <div className="flex min-w-0 flex-col gap-4">
-          <Surface data-testid="report-exports">
-            <SurfaceHeader
-              title="Export what you’ve reviewed"
-              meta="Each export contains exactly the preview below and saves to this device. Nothing is sent to anyone; sharing it is up to you."
-            />
-            {!balanced && (
-              <Notice tone="error" title="These figures don’t add up">
-                Please don’t share this report. Reload and try again.
-              </Notice>
-            )}
-            <div className="flex flex-wrap gap-2">
+      {/* Phones: the folded options, then the exports and the paper, then what the figures mean.
+          Laptops: options and notes on the left, always open; the paper on the right. */}
+      <div className="grid gap-section lg:grid-cols-[minmax(0,18rem)_minmax(0,46rem)] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-12 lg:gap-y-8">
+        <aside aria-label="Report options" className="min-w-0 lg:col-start-1 lg:row-start-1">
+          {/* Folded on phones; on laptops the content always shows (no toggle). */}
+          <h2 className="hidden type-heading lg:block">Options</h2>
+          <details className="group border-y border-(--section-divider) lg:border-0 lg:[&::details-content]:[content-visibility:visible]">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 lg:hidden [&::-webkit-details-marker]:hidden">
+              <span className="type-heading">Options</span>
+              <span className="flex items-center gap-2 type-caption text-text-secondary">
+                {report.periodLabel}
+                <ChevronDown
+                  className="size-4 transition-transform duration-(--duration-quick) group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </span>
+            </summary>
+            <div className="flex flex-col gap-stack pt-2 pb-4 lg:pt-stack lg:pb-0">
+              <div className="flex min-w-0 flex-col gap-1">
+                <p className="type-caption font-medium text-text-secondary">Period</p>
+                <PeriodPicker
+                  kind={selection.kind}
+                  customFrom={selection.customFrom}
+                  customTo={selection.customTo}
+                  error={selection.error}
+                  extra={`&${query.replace(periodQuery(selection), "").replace(/^&/, "")}`}
+                />
+              </div>
+              <ReportOptionsForm selection={selection} options={options} categories={categories} />
+            </div>
+          </details>
+        </aside>
+
+        <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <div className="flex flex-col gap-3" data-testid="report-exports">
+            <div className="flex flex-wrap items-center gap-2">
               <Button asChild>
                 <a href={exportHref("pdf")} download>
                   <Download aria-hidden="true" />
@@ -109,223 +133,204 @@ export default async function ReportsPage({
               </Button>
               <CopyReportText text={reportText(report, money, formatLocalDate)} />
             </div>
-          </Surface>
+            <p className="type-caption text-text-secondary">
+              Each export holds exactly this preview and saves to this device. Nothing is sent to
+              anyone; sharing it is up to you.
+            </p>
+            {!balanced && (
+              <Notice tone="error" title="These figures don’t add up">
+                Please don’t share this report. Reload and try again.
+              </Notice>
+            )}
+          </div>
 
-          <Surface asChild>
-            <section aria-label="Report preview" data-testid="report">
-              <div className="flex flex-col gap-0.5">
-                <h2 className="type-heading">Spending report</h2>
-                <p className="type-caption text-text-secondary" data-testid="report-period">
-                  {report.periodLabel} · {report.currency}
+          {/* The one bordered object on the page: the report as it will print. */}
+          <section
+            aria-label="Report preview"
+            data-testid="report"
+            className="flex flex-col gap-stack rounded-md border border-(--panel-border) bg-(--panel-bg) px-5 py-6 shadow-(--elevation-2) sm:px-10 sm:py-10"
+          >
+            <header className="flex flex-col gap-1 pb-2">
+              <p className="type-label text-text-secondary">PocketPulse</p>
+              <h2 className="type-title">Spending report</h2>
+              <p className="type-body text-text-secondary" data-testid="report-period">
+                {report.periodLabel} · {report.currency}
+              </p>
+            </header>
+
+            {nothingInPeriod && (
+              <StatePanel
+                size="section"
+                icon={FileText}
+                title="Nothing recorded in this period"
+                description={
+                  anyEntries
+                    ? "Pick another period in the options, or record an entry for this one."
+                    : "Reports show balances, income, spending, refunds and category totals once you record an entry."
+                }
+                actions={
+                  anyEntries ? undefined : (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link href="/add">Record an entry</Link>
+                    </Button>
+                  )
+                }
+              />
+            )}
+
+            <PreviewPart title="Summary">
+              <Summary report={report} money={money} />
+              {(report.setAsidePaise > 0 ||
+                report.releasedPaise > 0 ||
+                report.transferredPaise > 0) && (
+                <p className="type-caption text-text-secondary">
+                  Not spending: <span className="money">{money(report.setAsidePaise)}</span> set
+                  aside for goals, <span className="money">{money(report.releasedPaise)}</span>{" "}
+                  released, <span className="money">{money(report.transferredPaise)}</span> moved
+                  between wallets.
                 </p>
-              </div>
-
-              {nothingInPeriod && (
-                <StatePanel
-                  size="section"
-                  icon={FileText}
-                  title="Nothing recorded in this period"
-                  description={
-                    anyEntries
-                      ? "Pick another period in the options, or record an entry for this one."
-                      : "Reports show balances, income, spending, refunds and category totals once you record an entry."
-                  }
-                  actions={
-                    anyEntries ? undefined : (
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href="/add">Record an entry</Link>
-                      </Button>
-                    )
-                  }
-                />
               )}
+            </PreviewPart>
 
-              <PreviewPart title="Summary">
-                <Summary report={report} money={money} />
-                {(report.setAsidePaise > 0 ||
-                  report.releasedPaise > 0 ||
-                  report.transferredPaise > 0) && (
+            <PreviewPart title="Spending by category">
+              {report.categories.length === 0 && !report.hiddenRow ? (
+                <p className="type-body text-text-secondary">Nothing was spent in this period.</p>
+              ) : (
+                <ul className="flex flex-col gap-3" data-testid="report-categories">
+                  {report.categories.map((row) => (
+                    <li key={row.key} className="flex flex-col gap-1">
+                      <p className="flex flex-wrap justify-between gap-x-3 type-body">
+                        <span className="min-w-0 truncate font-medium">{row.label}</span>
+                        <span className="shrink-0 money">
+                          {money(row.netPaise)}
+                          <span className="text-text-secondary">
+                            {row.shareBp === null ? "" : ` · ${formatBasisPoints(row.shareBp, 0)}`}{" "}
+                            · {row.count} ×
+                          </span>
+                        </span>
+                      </p>
+                      <Progress
+                        tone="neutral"
+                        bp={ratioBasisPoints(Math.max(0, row.netPaise), largest) ?? 0}
+                        aria-label={`${row.label}, compared with the largest category`}
+                      />
+                      {reportSubcategories(row).map((sub) => (
+                        <p
+                          key={sub.key}
+                          className="flex justify-between gap-3 type-caption text-text-secondary"
+                        >
+                          <span className="min-w-0 truncate">{sub.label}</span>
+                          <span className="shrink-0 money">
+                            {money(sub.netPaise)} · {sub.count} ×
+                          </span>
+                        </p>
+                      ))}
+                    </li>
+                  ))}
+                  {report.hiddenRow && (
+                    <li className="flex justify-between gap-3 type-body">
+                      <span className="font-medium">{hiddenRowLabel()}</span>
+                      <span className="shrink-0 money">
+                        {money(report.hiddenRow.netPaise)}
+                        <span className="text-text-secondary"> · {report.hiddenRow.count} ×</span>
+                      </span>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </PreviewPart>
+
+            {report.comparison && (
+              <PreviewPart
+                title={`Compared with ${report.comparison.label}`}
+                testId="report-comparison"
+              >
+                <p className="type-body">
+                  Spending{" "}
+                  <span className="money">{money(report.comparison.spending.currentPaise)}</span>{" "}
+                  against{" "}
+                  <span className="money">{money(report.comparison.spending.previousPaise)}</span>.
+                  Income{" "}
+                  <span className="money">{money(report.comparison.income.currentPaise)}</span>{" "}
+                  against{" "}
+                  <span className="money">{money(report.comparison.income.previousPaise)}</span>.
+                </p>
+                {report.comparison.sparse && (
                   <p className="type-caption text-text-secondary">
-                    Not spending: <span className="money">{money(report.setAsidePaise)}</span> set
-                    aside for goals, <span className="money">{money(report.releasedPaise)}</span>{" "}
-                    released, <span className="money">{money(report.transferredPaise)}</span> moved
-                    between wallets.
+                    Too few purchases to read much into this.
                   </p>
                 )}
               </PreviewPart>
+            )}
 
-              <PreviewPart title="Spending by category">
-                {report.categories.length === 0 && !report.hiddenRow ? (
-                  <p className="type-body text-muted-foreground">
-                    Nothing was spent in this period.
-                  </p>
+            {report.transactions && (
+              <PreviewPart
+                title={
+                  <>
+                    Entries · <span className="money">{report.transactions.length}</span>
+                  </>
+                }
+                testId="report-entries"
+              >
+                {report.transactions.length === 0 ? (
+                  <p className="type-body text-text-secondary">No entries in this period.</p>
                 ) : (
-                  <ul className="flex flex-col gap-3" data-testid="report-categories">
-                    {report.categories.map((row) => (
-                      <li key={row.key} className="flex flex-col gap-1">
-                        <p className="flex flex-wrap justify-between gap-x-3 type-body">
-                          <span className="min-w-0 truncate font-medium">{row.label}</span>
-                          <span className="shrink-0 money">
-                            {money(row.netPaise)}
-                            <span className="text-text-secondary">
-                              {row.shareBp === null
-                                ? ""
-                                : ` · ${formatBasisPoints(row.shareBp, 0)}`}{" "}
-                              · {row.count} ×
-                            </span>
+                  <ul className="-my-2 divide-y divide-(--section-divider)">
+                    {report.transactions.map((row) => (
+                      <li key={row.id} className="flex items-start justify-between gap-3 py-2">
+                        <span className="min-w-0 type-body">
+                          <span className="block truncate font-medium">
+                            {row.description || REPORT_TYPE_LABELS[row.type]}
                           </span>
-                        </p>
-                        <Progress
-                          tone="neutral"
-                          bp={ratioBasisPoints(Math.max(0, row.netPaise), largest) ?? 0}
-                          aria-label={`${row.label}, compared with the largest category`}
-                        />
-                        {reportSubcategories(row).map((sub) => (
-                          <p
-                            key={sub.key}
-                            className="flex justify-between gap-3 type-caption text-text-secondary"
-                          >
-                            <span className="min-w-0 truncate">{sub.label}</span>
-                            <span className="shrink-0 money">
-                              {money(sub.netPaise)} · {sub.count} ×
+                          <span className="block type-caption text-text-secondary">
+                            {formatLocalDate(row.date)}
+                            {row.category ? ` · ${row.category}` : ""} · {row.wallet}
+                          </span>
+                          {row.note && (
+                            <span className="block type-caption text-text-secondary">
+                              {row.note}
                             </span>
-                          </p>
-                        ))}
-                      </li>
-                    ))}
-                    {report.hiddenRow && (
-                      <li className="flex justify-between gap-3 type-body">
-                        <span className="font-medium">{hiddenRowLabel()}</span>
-                        <span className="shrink-0 money">
-                          {money(report.hiddenRow.netPaise)}
-                          <span className="text-text-secondary"> · {report.hiddenRow.count} ×</span>
+                          )}
+                        </span>
+                        <span
+                          className={cn(
+                            "shrink-0 type-body money",
+                            (row.type === "income" || row.type === "refund") &&
+                              "text-money-positive",
+                          )}
+                        >
+                          {row.signedPaise < 0 ? "−" : ""}
+                          {money(row.amountPaise)}
                         </span>
                       </li>
-                    )}
+                    ))}
                   </ul>
                 )}
               </PreviewPart>
-
-              {report.comparison && (
-                <PreviewPart
-                  title={`Compared with ${report.comparison.label}`}
-                  testId="report-comparison"
-                >
-                  <p className="type-body">
-                    Spending{" "}
-                    <span className="money">{money(report.comparison.spending.currentPaise)}</span>{" "}
-                    against{" "}
-                    <span className="money">{money(report.comparison.spending.previousPaise)}</span>
-                    . Income{" "}
-                    <span className="money">{money(report.comparison.income.currentPaise)}</span>{" "}
-                    against{" "}
-                    <span className="money">{money(report.comparison.income.previousPaise)}</span>.
-                  </p>
-                  {report.comparison.sparse && (
-                    <p className="type-caption text-text-secondary">
-                      Too few purchases to read much into this.
-                    </p>
-                  )}
-                </PreviewPart>
-              )}
-
-              {report.transactions && (
-                <PreviewPart
-                  title={
-                    <>
-                      Entries · <span className="money">{report.transactions.length}</span>
-                    </>
-                  }
-                  testId="report-entries"
-                >
-                  {report.transactions.length === 0 ? (
-                    <p className="type-body text-muted-foreground">No entries in this period.</p>
-                  ) : (
-                    <ul className="-my-2 divide-y">
-                      {report.transactions.map((row) => (
-                        <li key={row.id} className="flex items-start justify-between gap-3 py-2">
-                          <span className="min-w-0 type-body">
-                            <span className="block truncate font-medium">
-                              {row.description || REPORT_TYPE_LABELS[row.type]}
-                            </span>
-                            <span className="block type-caption text-text-secondary">
-                              {formatLocalDate(row.date)}
-                              {row.category ? ` · ${row.category}` : ""} · {row.wallet}
-                            </span>
-                            {row.note && (
-                              <span className="block type-caption text-text-secondary">
-                                {row.note}
-                              </span>
-                            )}
-                          </span>
-                          <span
-                            className={cn(
-                              "shrink-0 type-body money",
-                              (row.type === "income" || row.type === "refund") &&
-                                "text-money-positive",
-                            )}
-                          >
-                            {row.signedPaise < 0 ? "−" : ""}
-                            {money(row.amountPaise)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </PreviewPart>
-              )}
-            </section>
-          </Surface>
+            )}
+          </section>
         </div>
 
-        <aside aria-label="Report options" className="flex min-w-0 flex-col gap-4 lg:order-first">
-          <Surface>
-            {/* Open by default so every option stays one tap away; it can be folded away. */}
-            <details open className="group">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2">
-                <h2 className="type-heading">Options</h2>
-                <ChevronDown
-                  className="size-4 text-muted-foreground transition-transform duration-(--duration-quick) group-open:rotate-180"
-                  aria-hidden="true"
-                />
-              </summary>
-              <div className="flex flex-col gap-stack pt-stack">
-                <div className="flex min-w-0 flex-col gap-1">
-                  <p className="type-caption font-medium text-text-secondary">Period</p>
-                  <PeriodPicker
-                    kind={selection.kind}
-                    customFrom={selection.customFrom}
-                    customTo={selection.customTo}
-                    error={selection.error}
-                    extra={`&${query.replace(periodQuery(selection), "").replace(/^&/, "")}`}
-                  />
+        <div className="flex min-w-0 flex-col gap-4 lg:col-start-1 lg:row-start-2">
+          <details className="group border-t border-(--section-divider) pt-2">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-lg type-body font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+              What these figures mean
+              <ChevronDown
+                className="size-4 text-text-secondary transition-transform duration-(--duration-quick) group-open:rotate-180"
+                aria-hidden="true"
+              />
+            </summary>
+            <dl className="flex flex-col gap-1.5 pt-1 pb-1 type-caption">
+              {REPORT_DEFINITIONS.map(([term, meaning]) => (
+                <div key={term}>
+                  <dt className="inline font-medium">{term}: </dt>
+                  <dd className="inline text-text-secondary">{meaning}</dd>
                 </div>
-                <ReportOptionsForm
-                  selection={selection}
-                  options={options}
-                  categories={categories}
-                />
-              </div>
-            </details>
-          </Surface>
+              ))}
+            </dl>
+          </details>
 
-          <Surface variant="inset">
-            <details>
-              <summary className="flex min-h-11 cursor-pointer items-center type-body font-medium">
-                What these figures mean
-              </summary>
-              <dl className="flex flex-col gap-1.5 pt-1 pb-1 type-body">
-                {REPORT_DEFINITIONS.map(([term, meaning]) => (
-                  <div key={term}>
-                    <dt className="inline font-medium">{term}: </dt>
-                    <dd className="inline text-muted-foreground">{meaning}</dd>
-                  </div>
-                ))}
-              </dl>
-            </details>
-          </Surface>
-
-          <Notice>
+          <p className="type-caption text-text-secondary">
             Want to check a figure? The same period in{" "}
             <Link
               href={`/insights?${periodQuery(selection)}` as Route}
@@ -334,8 +339,8 @@ export default async function ReportsPage({
               Insights
             </Link>{" "}
             shows the same totals.
-          </Notice>
-        </aside>
+          </p>
+        </div>
       </div>
     </>
   );

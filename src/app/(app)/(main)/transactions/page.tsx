@@ -1,16 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Receipt, SearchX, Zap } from "lucide-react";
+import { Plus, Zap } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { EmptyHero } from "@/components/layout/primitives";
 import { WaitingEntries } from "@/components/offline/waiting-entries";
 import { GoalReleaseNotes } from "@/components/plan/goal-release-notes";
 import { InsightExplored } from "@/components/rewards/insight-explored";
-import { StatePanel } from "@/components/states/state-panel";
 import { type ListedDay, EntryList } from "@/components/transactions/entry-list";
 import { HistoryFilterForm } from "@/components/transactions/history-filters";
 import { Button } from "@/components/ui/button";
-import { Surface } from "@/components/ui/surface";
 import {
   indexById,
   isActive,
@@ -153,7 +152,7 @@ export default async function TransactionsPage({
     <>
       <PageHeader
         title="Transactions"
-        description="Everything you’ve recorded, newest first."
+        description="Everything you’ve recorded, by day, newest first."
         actions={
           <Button asChild>
             <Link href="/transactions/new">
@@ -182,10 +181,10 @@ export default async function TransactionsPage({
       />
 
       {(since === null ? ledger.length === 0 : !anyEntries) ? (
-        <StatePanel
-          icon={Receipt}
+        <EmptyHero
+          label="History"
           title="No transactions yet"
-          description="No entries yet. Your first tea or bus ride starts the list."
+          description="Your first tea or bus ride starts the list."
           actions={
             <>
               <Button asChild>
@@ -239,19 +238,16 @@ export default async function TransactionsPage({
             )}
           </div>
           {matches.length === 0 ? (
-            <Surface>
-              <StatePanel
-                icon={SearchX}
-                size="section"
-                title="No entries match"
-                description="Try fewer words or clear a filter."
-                actions={
-                  <Button variant="outline" asChild>
-                    <Link href="/transactions">Clear search and filters</Link>
-                  </Button>
-                }
-              />
-            </Surface>
+            <EmptyHero
+              className="py-4"
+              title="No entries match"
+              description="Try fewer words or clear a filter."
+              actions={
+                <Button variant="outline" asChild>
+                  <Link href="/transactions">Clear search and filters</Link>
+                </Button>
+              }
+            />
           ) : (
             <>
               <EntryList days={days} />

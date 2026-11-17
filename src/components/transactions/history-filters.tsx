@@ -5,7 +5,6 @@ import type { PickerNode } from "@/components/categories/category-picker";
 import { Field, MoneyField, SelectField } from "@/components/forms/form-parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Surface } from "@/components/ui/surface";
 import type { Account, TransactionType } from "@/domain";
 import { TYPE_LABELS } from "@/lib/entry-view";
 import { paiseToInput } from "@/lib/format";
@@ -78,7 +77,7 @@ export function HistoryFilterForm({
           <input type="hidden" name="key" value={filters.group.key} />
         </>
       )}
-      <Surface className="gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex gap-2">
           <div className="relative min-w-0 flex-1">
             <Search
@@ -98,23 +97,24 @@ export function HistoryFilterForm({
           <Button type="submit">Search</Button>
         </div>
 
-        {/* Phones: a Filters toggle with the active count. It is a checkbox with no name (so it
-            isn't submitted) and works before JavaScript loads. Desktop: the filters always show. */}
+        {/* One Filters control at every width, with the active count; open when a filter is set
+            or has an error. A checkbox with no name (so it isn't submitted) that works before
+            JavaScript loads. */}
         <input
           id="history-filters-toggle"
           type="checkbox"
-          className="peer sr-only lg:hidden"
-          defaultChecked={hasErrors}
+          className="peer sr-only"
+          defaultChecked={hasErrors || activeCount > 0}
           aria-controls="history-filters-panel"
         />
         <label
           htmlFor="history-filters-toggle"
-          className="inline-flex min-h-10 w-fit cursor-pointer items-center gap-2 rounded-lg border px-3 type-body font-medium transition-colors duration-(--duration-quick) select-none peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50 hover:bg-accent lg:hidden pointer-coarse:min-h-11"
+          className="inline-flex min-h-11 w-fit cursor-pointer items-center gap-2 rounded-lg border px-3 type-body font-medium transition-colors duration-(--duration-quick) select-none peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50 hover:bg-accent"
         >
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filters
           {activeCount > 0 ? (
-            <span className="rounded-full bg-primary-soft px-2 type-caption text-primary">
+            <span className="rounded-full bg-(--finance-inset) px-2 type-caption text-foreground money">
               {activeCount}
               <span className="sr-only"> active</span>
             </span>
@@ -123,7 +123,7 @@ export function HistoryFilterForm({
 
         <div
           id="history-filters-panel"
-          className="hidden gap-3 border-t pt-3 peer-checked:grid sm:grid-cols-2 lg:grid lg:grid-cols-4 xl:grid-cols-7"
+          className="hidden gap-3 border-t border-(--section-divider) pt-3 peer-checked:grid sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7"
         >
           <SelectField id="filter-type" name="type" label="Type" defaultValue={filters.type ?? ""}>
             <option value="">All types</option>
@@ -200,7 +200,7 @@ export function HistoryFilterForm({
             )}
           </div>
         </div>
-      </Surface>
+      </div>
     </form>
   );
 }

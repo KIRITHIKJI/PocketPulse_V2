@@ -5,7 +5,6 @@ import { ArrowLeft, Bot, Database, Landmark, Lock, Send } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { PrivacyForm } from "@/components/settings/preference-forms";
 import { Button } from "@/components/ui/button";
-import { Surface } from "@/components/ui/surface";
 import { getProfile } from "@/lib/data/queries";
 
 export const metadata: Metadata = { title: "Privacy" };
@@ -52,25 +51,31 @@ export default async function PrivacySettingsPage() {
         title="Privacy"
         description="Your financial data is private to your account. Nothing is shared with parents or third parties without your action."
       />
-      <Surface role="region" aria-labelledby="privacy-facts">
+      <section
+        role="region"
+        aria-labelledby="privacy-facts"
+        className="flex flex-col gap-stack border-t border-(--section-divider) pt-section"
+      >
         <h2 id="privacy-facts" className="type-heading">
           How your data is handled
         </h2>
-        <ul className="flex flex-col divide-y">
+        <ul className="flex max-w-3xl flex-col divide-y divide-(--section-divider)">
           {FACTS.map(({ icon: Icon, title, body }) => (
             <li key={title} className="flex gap-3 py-3 first:pt-0 last:pb-0">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-surface-inset text-text-secondary">
-                <Icon className="size-4" aria-hidden="true" />
-              </span>
+              <Icon className="mt-0.5 size-4 shrink-0 text-text-secondary" aria-hidden="true" />
               <div className="flex min-w-0 flex-col gap-0.5">
                 <h3 className="type-body font-medium">{title}</h3>
-                <p className="type-body text-muted-foreground">{body}</p>
+                <p className="type-body text-text-secondary">{body}</p>
               </div>
             </li>
           ))}
         </ul>
-      </Surface>
-      <Surface role="region" aria-labelledby="privacy-report-defaults">
+      </section>
+      <section
+        role="region"
+        aria-labelledby="privacy-report-defaults"
+        className="flex flex-col gap-stack border-t border-(--section-divider) pt-section"
+      >
         <div className="flex flex-col gap-0.5">
           <h2 id="privacy-report-defaults" className="type-heading">
             Report defaults
@@ -80,7 +85,7 @@ export default async function PrivacySettingsPage() {
           </p>
         </div>
         <PrivacyForm includeNotesInReports={profile.includeNotesInReports} summary={false} />
-      </Surface>
+      </section>
     </div>
   );
 }

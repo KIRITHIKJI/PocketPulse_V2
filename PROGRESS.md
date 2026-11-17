@@ -611,6 +611,91 @@ Recurring: one-off bills still say "Planned, not paid" (recurring items say "Sch
 the bill wording. The goal completion moment on `/goals/[id]` still uses the V1 confetti burst
 (that detail page is 3F). The phone section jump on Recurring (Upcoming / Items) was kept as it was.
 
+### Phase 3F — remaining screens, mobile and consistency passes (2026-11-17) ✅
+
+Two commits: "V2 Phase 3F: Next.js security patch" (package files only) and "V2 Phase 3F: remaining
+screens and mobile pass".
+
+**Task 0 — Next.js security patch.** `next` and `eslint-config-next` 16.4.3 → **16.4.6** (the
+latest 16.4.x patch, published 2026-11-09; ≥ 16.4.5 as asked). Lockfile changes: only `next`,
+`@next/env`, `@next/swc-*`, `@next/eslint-plugin-next`, `eslint-config-next`. Before: `next build`
+stopped with `SecurityFatalError` (the 3E "Open" note); after: two builds in a row passed with no
+advisory text in the output. Checks on Task 0 alone: lint ✅ 0 problems (102 s); typecheck ✅
+(65 s); unit ✅ 41 files / 981 (first attempt hit 11 vitest worker-start timeouts while a 2.2 GB copy
+ran in parallel; rerun alone 83 s, all pass); build ✅ (158 s, then 57 s); smoke ✅ 49 passed (386 s
+incl. build). Sizes unchanged except −1 KB on four routes. `npm audit`: the known moderate
+`minimatch` advisory (ESLint tooling) remains.
+
+No money logic, domain, migration or schema change. Diff check for the second commit: nothing under
+`src/domain`, `src/lib`, `src/hooks`, `src/app/api`, `supabase`, `package.json` or the lockfile. No
+new dependency.
+
+- **Screens** (compositions and screen review in `doc/DESIGN_PLAN.md`, V2 Phase 3F):
+  - Transactions: the day-grouped list without boxes (rows on phones, an unboxed table on
+    laptops); one Filters control with the active count at every width, open when a filter is
+    set or has an error; empty states as `EmptyHero`.
+  - Transaction detail: the amount as hero, details as hairline rows; new/edit forms unboxed.
+  - Accounts: net tracked total + "In wallets · You owe · Owed to you" (domain
+    `netPositionParts`, as Home); Wallets / Cards / Loans grouped; archived folded.
+  - Account detail: balance in words as hero, actions, then Check balance / Balance checks /
+    Recent entries as sections; the card's duplicate "Owed on card" row removed.
+  - Categories: the list without boxes; quiet text tabs (Spending, Income, Rules,
+    Uncategorized; learned items arrive with 4B). `rules-panel.tsx` imports `categorize` and
+    `category-tree` directly instead of the `@/domain` barrel (zod): **252 → 215 KB**.
+  - Goal detail: confetti burst and its CSS removed; quiet completion moment: `GoalSeal` (new,
+    `emblems.tsx`) revealed with `pp-emblem-reveal`, none under reduced motion.
+  - Reports: the paper-like preview is the one bordered object; exports as a toolbar; Options
+    folded on phones, always open on laptops (`::details-content`, no JS).
+  - Reminders, Settings, Privacy, Sync, Data: sections with hairlines; Settings jump links scroll
+    sideways on phones.
+  - Welcome, auth, onboarding: the one form; violet removed from pillars, step markers, notes.
+  - `StatePanel`: neutral icon (no violet), no box.
+- **Also fixed:** quick-add tiles had no space between the name and its hint, so axe read
+  "CustomAny item" against the name "Custom. Any item: …" (`label-content-name-mismatch`, shown by
+  the full run once the shared account had a Custom tile; pre-existing since 3B, fixed with a
+  whitespace node, no visual change).
+- **Mobile pass (375 px, every 3F screen, both themes, data and empty):** measured on all 132 shots:
+  no horizontal overflow after the fix round (Settings was 272 px over, Categories 13 px), no page
+  errors; targets under 44 px drawn are only the switches, whose touch area is 44 px.
+- **Money check** (old build = the Task 0 build of `20fb2bc` code, kept as a copy of `.next`;
+  new build = final code; same data, back to back; 4 test accounts: `accounts`, `report`,
+  `transactions`, `user`): every ₹ figure read per text node and every `data-paise` on
+  Transactions (all entries), 25 entry pages per account, Accounts and every account page, every
+  goal page, Reports (all time, this month, previous month, with entries, notes, comparison),
+  Categories › Uncategorized, Reminders, plus the 12 report CSVs (176 rows): **76 views, 600
+  figures, 45 distinct; CSVs byte-identical; every figure identical** except two presentation
+  changes: the new split line on Accounts ("In wallets ₹2,239 · You owe ₹1,950 · Owed to you
+  ₹300", adds up to the unchanged ₹589 total) and the card page showing ₹750 once instead of twice.
+  The `accounts` account holds a card, a borrowed loan, money lent, a goal, bills and (added this
+  phase) a balance correction.
+- **Test data touched:** on `accounts`, a +₹40 balance correction on Cash recorded through Check
+  balance (Cash ₹2,199 → ₹2,239).
+- **Tests changed (none weakened, no timeout raised):** `e2e/motion.spec.ts` measures the goal
+  seal's reveal instead of the burst (control: animates > 0.2 s; reduced: at least one animation
+  started and every one < 0.001 s, which is stricter than before; no burst pieces at any setting);
+  `e2e/report.spec.ts` Journey F opens the folded Options on phones and asserts they start folded;
+  `e2e/onboarding-categories.spec.ts` Accounts label "Net tracked total · all accounts · now" and an
+  exact `Description` label; unit `components.test.tsx`: empty state has no violet and no box.
+
+**Checks (final code, this machine):**
+
+| Check | Result | Time |
+| --- | --- | --- |
+| `npm run lint` | ✅ 0 problems | 42 s |
+| `npm run typecheck` | ✅ | 6 s |
+| `npm test` | ✅ 41 files / 982 tests (was 981) | 14 s |
+| `npm run test:db` (local PostgreSQL 18) | ✅ 15 files, 144 passed + 14 placeholders. A first run without `POCKETPULSE_TEST_DB_URL` only skipped (not counted) | 33 s |
+| `npm run build` | ✅ (inside each e2e/smoke run; the round-2 build alone ~100 s) | — |
+| Full e2e, first run | 303 passed, 8 failed, 6 skipped, 1 did not run: `/add` a11y ×4 (tile name, above), categories test ×2 and the full-form test (new labels matched broad selectors), Journey F on phone (the test's toggle selector matched two summaries). All fixed; the 8 rerun alone: 21 passed | 6.4 min |
+| `npm run test:e2e` (full, final) | ✅ 312 passed, 6 skipped (the designed laptop-only / desktop-only skips), 0 failed, 0 did not run | 342 s = 5.7 min incl. build |
+| `npm run test:smoke` | ✅ 49 passed | 147 s incl. build |
+
+**Sizes** (`scripts/route-js.mjs`, gzip KB, before = `20fb2bc`): shell (`/settings/data`) **175** (≤ 200); `/categories` 253 → **215** (+78 → +40 above the shell); `/rewards/achievements` 186 → 187 (the shared emblem module gained `GoalSeal`); every other route unchanged. Largest above the shell: `/goals/[id]` +68, `/insights/leaks` +64, `/insights/category/[id]` +63, `/onboarding` +62: all under 70.
+
+**Open:** `/goals/[id]` is 68 KB above the shell (unchanged, under 70). Learned items on Categories
+come with Phase 4B. "No missions yet" / "No achievements yet" (3D) still can't be reached with the
+real catalog. Real phones are still untested (spec §13).
+
 ### Checklist for Phases 2–6
 
 **Phase 2A — faster tests (test infrastructure only)**
@@ -645,9 +730,9 @@ the bill wording. The goal completion moment on `/goals/[id]` still uses the V1 
 - [x] 3C emblem directions (your choice: Sigil, revised), RankEmblem/AchievementBadge, Player status (your approval)
 - [x] 3D Missions, Achievements, Rewards, feedback moments
 - [x] 3E Insights, Money leaks, Budgets, Goals, Safe to Spend, Survival, Recurring
-- [ ] 3F Transactions, Accounts, Categories, Reports, Reminders, Settings, auth, onboarding; mobile
+- [x] 3F Transactions, Accounts, Categories, Reports, Reminders, Settings, auth, onboarding; mobile
       and consistency passes
-- [x] Shared signed-in shell ≤ 200 KB gzip (from 246): 175 after 3A; keep it there through 3F
+- [x] Shared signed-in shell ≤ 200 KB gzip (from 246): 175 after 3A, 175 at the end of 3F
 
 **Phase 4**
 - [ ] 4A Intelligence Feed + Reviews (`feed_dismissals` migration)

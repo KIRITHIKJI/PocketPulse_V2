@@ -173,7 +173,7 @@ export default async function OnboardingPage({
       content = (
         <div className="flex flex-col gap-6">
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-semibold">Look & motion</legend>
+            <legend className="mb-1 type-body font-medium">Look & motion</legend>
             <AppearanceSettings />
           </fieldset>
           <PreferencesStepForm
@@ -191,14 +191,14 @@ export default async function OnboardingPage({
     <PreferenceSync theme={profile.theme} motion={profile.motion}>
       <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 py-6 sm:py-10">
         <div className="flex flex-col gap-2">
-          <p className="text-sm font-medium text-primary">
+          <p className="type-label text-text-secondary">
             {profile.onboardingCompletedAt
               ? "Setup guide"
               : `Welcome${profile.displayName ? `, ${profile.displayName}` : ""}`}{" "}
             · Step {index + 1} of {ONBOARDING_STEPS.length}
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{current.title}</h1>
-          <p className="text-muted-foreground">{INTROS[step]}</p>
+          <h1 className="type-title">{current.title}</h1>
+          <p className="type-body text-text-secondary">{INTROS[step]}</p>
         </div>
 
         <nav aria-label="Setup steps">
@@ -209,10 +209,10 @@ export default async function OnboardingPage({
                   href={stepHref(s.id)}
                   aria-current={s.id === step ? "step" : undefined}
                   className={cn(
-                    "flex min-h-10 items-center gap-1.5 rounded-full border px-3 text-xs font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                    "flex min-h-11 items-center gap-1.5 rounded-full border border-(--section-divider) px-3 type-caption font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
                     s.id === step
-                      ? "border-primary bg-primary-soft text-primary"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "border-foreground/40 bg-(--finance-inset) text-foreground"
+                      : "text-text-secondary hover:text-foreground",
                   )}
                 >
                   {i < index ? (
@@ -228,8 +228,8 @@ export default async function OnboardingPage({
         </nav>
 
         {step === "region" && !profile.onboardingCompletedAt && (
-          <p className="flex gap-2 rounded-2xl border bg-card/70 p-4 text-sm text-muted-foreground">
-            <Info className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+          <p className="flex gap-2 type-body text-text-secondary">
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
             Every step is optional — skip any of them and change them later in Settings. Your
             default categories and quick-add tiles are already set up.
           </p>

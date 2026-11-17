@@ -87,11 +87,11 @@ function EntryTableRow({ entry }: { entry: ListedEntry }) {
   return (
     <tr
       className={cn(
-        "border-t transition-colors duration-(--duration-quick) hover:bg-accent/60",
+        "border-t border-(--section-divider) transition-colors duration-(--duration-quick) hover:bg-accent/60",
         isNew && "pp-new-entry",
       )}
     >
-      <td className="py-2 pr-3 pl-4 text-muted-foreground money">{entry.timeLabel}</td>
+      <td className="py-2 pr-3 pl-2 text-text-secondary money">{entry.timeLabel}</td>
       <td className="max-w-72 py-2 pr-3">
         <Link
           href={`/transactions/${entry.id}`}
@@ -103,7 +103,7 @@ function EntryTableRow({ entry }: { entry: ListedEntry }) {
       </td>
       <td className="py-2 pr-3 text-muted-foreground">{entry.categoryLabel ?? "—"}</td>
       <td className="py-2 pr-3 text-muted-foreground">{entry.walletLabel ?? "—"}</td>
-      <td className={cn("py-2 pr-4 text-right font-semibold money", amountTone(entry))}>
+      <td className={cn("py-2 pr-2 text-right font-semibold money", amountTone(entry))}>
         {entry.amountLabel}
       </td>
     </tr>
@@ -128,18 +128,18 @@ function movesLabel(count: number) {
 export function EntryList({ days }: { days: ListedDay[] }) {
   return (
     <>
-      <div className="flex flex-col gap-4 lg:hidden" data-testid="history-cards">
+      <div className="flex flex-col gap-6 lg:hidden" data-testid="history-cards">
         {days.map((day) => {
           const { entries, moves } = splitDay(day);
           return (
-            <section key={day.date} aria-label={day.label} className="flex flex-col gap-1.5">
-              <h2 className="sticky top-16 z-10 -mx-1 flex items-baseline justify-between rounded-lg bg-background/90 px-3 py-1 type-caption font-semibold backdrop-blur">
+            <section key={day.date} aria-label={day.label} className="flex flex-col gap-1">
+              <h2 className="sticky top-16 z-10 -mx-2 flex items-baseline justify-between border-b border-(--section-divider) bg-background/90 px-2 py-1.5 type-label text-text-secondary backdrop-blur">
                 {day.label}
                 {day.summary && (
-                  <span className="font-normal text-muted-foreground money">{day.summary}</span>
+                  <span className="tracking-normal normal-case money">{day.summary}</span>
                 )}
               </h2>
-              <ul className="flex flex-col divide-y rounded-2xl border border-(--surface-card-border) bg-(--surface-card-bg) p-1 shadow-(--surface-card-shadow)">
+              <ul className="-mx-2 flex flex-col divide-y divide-(--section-divider)">
                 {entries.map((entry) => (
                   <EntryCard key={entry.id} entry={entry} />
                 ))}
@@ -183,12 +183,12 @@ export function EntryList({ days }: { days: ListedDay[] }) {
         })}
       </div>
 
-      <div className="hidden overflow-hidden rounded-2xl border border-(--surface-card-border) bg-(--surface-card-bg) shadow-(--surface-card-shadow) lg:block">
+      <div className="hidden lg:block">
         <table className="w-full type-body" data-testid="history-table">
           <caption className="sr-only">Transactions, newest first</caption>
-          <thead className="bg-surface-inset text-left type-caption text-muted-foreground">
+          <thead className="text-left type-label text-text-secondary">
             <tr>
-              <th scope="col" className="py-2 pr-3 pl-4 font-medium">
+              <th scope="col" className="py-2 pr-3 pl-2 font-medium">
                 Time
               </th>
               <th scope="col" className="py-2 pr-3 font-medium">
@@ -200,7 +200,7 @@ export function EntryList({ days }: { days: ListedDay[] }) {
               <th scope="col" className="py-2 pr-3 font-medium">
                 Wallet
               </th>
-              <th scope="col" className="py-2 pr-4 text-right font-medium">
+              <th scope="col" className="py-2 pr-2 text-right font-medium">
                 Amount
               </th>
             </tr>
@@ -209,15 +209,15 @@ export function EntryList({ days }: { days: ListedDay[] }) {
             const { entries, moves } = splitDay(day);
             return (
               <tbody key={day.date}>
-                <tr className="border-t bg-surface-inset/60">
+                <tr className="border-t border-(--section-divider)">
                   <th
                     scope="colgroup"
                     colSpan={4}
-                    className="py-2 pl-4 text-left type-caption font-semibold"
+                    className="pt-6 pb-2 pl-2 text-left type-caption font-semibold"
                   >
                     {day.label}
                   </th>
-                  <td className="py-2 pr-4 text-right type-caption text-muted-foreground money">
+                  <td className="pt-6 pr-2 pb-2 text-right type-caption text-text-secondary money">
                     {day.summary}
                   </td>
                 </tr>
@@ -239,14 +239,14 @@ function GoalMoveRows({ moves }: { moves: ListedEntry[] }) {
   const [open, setOpen] = React.useState(false);
   return (
     <>
-      <tr className="border-t">
+      <tr className="border-t border-(--section-divider)">
         <td colSpan={5} className="p-0">
           <button
             type="button"
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
             className={cn(
-              "flex min-h-11 w-full items-center gap-2.5 py-2 pr-4 pl-4 text-left text-muted-foreground hover:bg-accent/60",
+              "flex min-h-11 w-full items-center gap-2.5 py-2 pr-2 pl-2 text-left text-text-secondary hover:bg-accent/60",
               FOCUS,
             )}
           >

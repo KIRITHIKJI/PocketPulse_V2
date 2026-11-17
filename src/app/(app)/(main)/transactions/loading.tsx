@@ -12,12 +12,13 @@ export default function TransactionsLoading() {
         </div>
         <Skeleton className="h-10 w-32" />
       </div>
-      <Skeleton className="h-28 rounded-2xl lg:h-40" />
+      <Skeleton className="h-11 rounded-lg" />
+      <Skeleton className="h-11 w-28 rounded-lg lg:hidden" />
       <Skeleton className="h-4 w-56" />
       <div className="flex flex-col gap-3">
         <Skeleton className="h-4 w-24" />
         {Array.from({ length: 6 }, (_, index) => (
-          <Skeleton key={index} className="h-14 rounded-xl" />
+          <Skeleton key={index} className="h-12 rounded-lg" />
         ))}
       </div>
     </div>

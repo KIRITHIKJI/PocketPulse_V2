@@ -6,10 +6,10 @@ import { ArrowLeft, Pencil, PiggyBank, RotateCcw } from "lucide-react";
 import { CategoryBadge } from "@/components/categories/category-icon";
 import { Notice } from "@/components/feedback/notice";
 import { PageHeader } from "@/components/layout/page-header";
+import { Section } from "@/components/layout/primitives";
 import { DeleteEntryButton, RepeatEntryButton } from "@/components/transactions/entry-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Surface, SurfaceHeader } from "@/components/ui/surface";
 import {
   type TransactionSource,
   indexById,
@@ -159,17 +159,17 @@ export default async function TransactionDetailPage({
       </div>
       <PageHeader title={view.title} />
 
-      {/* Phones: amount, facts, actions. Desktop: amount and actions left, facts right. */}
-      <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-6">
-        <Surface variant="hero" className="min-w-0 lg:col-span-7">
+      {/* Phones: amount, actions, facts. Desktop: amount and actions left, facts right. */}
+      <div className="grid gap-section lg:grid-cols-12 lg:grid-rows-[auto_1fr] lg:items-start lg:gap-x-12 lg:gap-y-6">
+        <section aria-label="Entry summary" className="flex min-w-0 flex-col gap-4 lg:col-span-7">
           <div className="flex items-center gap-4">
             <CategoryBadge icon={view.categoryIcon} color={view.categoryColor} />
             <div className="flex min-w-0 flex-col gap-0.5">
-              <p className="type-caption text-muted-foreground">{TYPE_LABELS[record.type]}</p>
-              <p className={`type-display money ${amountTone}`} data-testid="entry-amount">
+              <p className="type-label text-text-secondary">{TYPE_LABELS[record.type]}</p>
+              <p className={`type-hero money ${amountTone}`} data-testid="entry-amount">
                 {view.amountLabel}
               </p>
-              <p className="type-caption text-muted-foreground">{when}</p>
+              <p className="type-caption text-text-secondary">{when}</p>
             </div>
           </div>
           {goalMove && <p className="type-body text-text-secondary">{goalMove}</p>}
@@ -181,7 +181,7 @@ export default async function TransactionDetailPage({
           ))}
 
           {record.type === "expense" && refunds.length > 0 && (
-            <Surface variant="inset" className="gap-2 type-body">
+            <div className="flex flex-col gap-2 border-t border-(--section-divider) pt-3 type-body">
               <p className="font-medium">
                 <span className="text-money-positive money">
                   {money(refundedAmount(record.id, ledger))}
@@ -201,7 +201,7 @@ export default async function TransactionDetailPage({
                   </li>
                 ))}
               </ul>
-            </Surface>
+            </div>
           )}
           {original && (
             <p className="type-body text-text-secondary">
@@ -216,19 +216,21 @@ export default async function TransactionDetailPage({
               . It adds money back and reduces spending; it isn’t counted as income.
             </p>
           )}
-        </Surface>
+        </section>
 
-        <Surface className="min-w-0 lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1">
-          <SurfaceHeader title="Details" />
-          <dl className="-my-1 divide-y type-body">
+        <Section
+          title="Details"
+          className="order-last min-w-0 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1 lg:border-t-0 lg:pt-0"
+        >
+          <dl className="-my-1 divide-y divide-(--section-divider) type-body">
             {rows.map(([term, value]) => (
               <div key={term} className="flex items-start justify-between gap-4 py-2.5">
-                <dt className="shrink-0 text-muted-foreground">{term}</dt>
+                <dt className="shrink-0 text-text-secondary">{term}</dt>
                 <dd className="min-w-0 text-right break-words">{value}</dd>
               </div>
             ))}
           </dl>
-        </Surface>
+        </Section>
 
         <div className="flex flex-wrap gap-2 lg:col-span-7 lg:col-start-1">
           {editable && (

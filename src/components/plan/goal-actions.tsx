@@ -1,37 +1,22 @@
 "use client";
 
 import * as React from "react";
-import {
-  Archive,
-  ArchiveRestore,
-  CircleCheck,
-  LoaderCircle,
-  PartyPopper,
-  Pause,
-  Play,
-  X,
-} from "lucide-react";
+import { Archive, ArchiveRestore, CircleCheck, LoaderCircle, Pause, Play, X } from "lucide-react";
 
 import { ConfirmAction, InlineAction } from "@/components/forms/inline-action";
 import { FormMessage } from "@/components/forms/form-parts";
+import { GoalSeal } from "@/components/rewards/emblems";
 import { Button } from "@/components/ui/button";
-import { Surface } from "@/components/ui/surface";
 import { type GoalStatus, moneyFormatter } from "@/domain";
 import { setGoalStatus } from "@/lib/actions/goals";
 import type { EntryKit } from "@/lib/data/entry-kit";
 import { IDLE, type FormState } from "@/lib/form-state";
 
-/** Theme tokens only, so the burst matches both themes. */
-const CONFETTI = [
-  "var(--color-primary)",
-  "var(--color-feedback-success)",
-  "var(--color-money-earmark)",
-  "var(--color-feedback-info)",
-  "var(--color-feedback-warning)",
-  "var(--color-rank)",
-];
-
-/** A short burst around a message that stays. It covers nothing and blocks nothing. */
+/**
+ * The quiet completion moment, in the style of the level-up (doc/DESIGN_PLAN.md, V2 Phase 3D): the
+ * goal's seal is revealed once (`pp-emblem-reveal`, none under reduced motion) beside a message
+ * that stays until dismissed. No burst; it covers nothing and blocks nothing.
+ */
 function GoalCelebration({
   title,
   savedLabel,
@@ -42,32 +27,21 @@ function GoalCelebration({
   onDismiss: () => void;
 }) {
   return (
-    <Surface
+    <div
       role="status"
       data-testid="goal-celebration"
-      className="flex-row items-center gap-3 overflow-hidden border-feedback-success/40 bg-feedback-success/10"
+      className="flex items-center gap-4 border-y border-(--section-divider) py-4"
     >
-      {Array.from({ length: 14 }, (_, i) => {
-        const angle = (i / 14) * 2 * Math.PI;
-        const style = {
-          "--pp-x": `${Math.round(Math.cos(angle) * 170)}px`,
-          "--pp-y": `${Math.round(Math.sin(angle) * 56)}px`,
-          backgroundColor: CONFETTI[i % CONFETTI.length],
-          animationDelay: `${(i % 4) * 40}ms`,
-        } as React.CSSProperties;
-        return <span key={i} aria-hidden="true" className="pp-celebrate-piece" style={style} />;
-      })}
-      <span className="pp-celebrate-pop flex size-11 shrink-0 items-center justify-center rounded-full bg-feedback-success text-background">
-        <PartyPopper className="size-5" aria-hidden="true" />
-      </span>
+      <GoalSeal size={56} className="pp-emblem-reveal" />
       <div className="min-w-0 flex-1">
+        <p className="type-label text-text-secondary">Goal complete</p>
         <p className="type-heading">You did it: {title} is complete</p>
-        <p className="type-body text-muted-foreground">{savedLabel}</p>
+        <p className="type-body text-text-secondary">{savedLabel}</p>
       </div>
       <Button variant="ghost" size="icon-sm" aria-label="Dismiss" onClick={onDismiss}>
         <X aria-hidden="true" />
       </Button>
-    </Surface>
+    </div>
   );
 }
 

@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-/** Accounts' shape while it loads: header, the total, then the wallet grid (rows on phones). */
+/** Accounts' shape while it loads: header, the total, then the account rows. */
 export default function AccountsLoading() {
   return (
     <div role="status" aria-live="polite" className="flex flex-col gap-6">
@@ -12,12 +12,12 @@ export default function AccountsLoading() {
         </div>
         <Skeleton className="h-10 w-32" />
       </div>
-      <Skeleton className="h-36 rounded-2xl" />
+      <Skeleton className="h-24 w-72 max-w-full" />
       <div className="flex flex-col gap-3">
         <Skeleton className="h-5 w-32" />
-        <div className="grid gap-3 lg:grid-cols-3 lg:gap-4">
+        <div className="flex flex-col gap-3">
           {Array.from({ length: 3 }, (_, index) => (
-            <Skeleton key={index} className="h-20 rounded-xl lg:h-40 lg:rounded-2xl" />
+            <Skeleton key={index} className="h-20 rounded-lg" />
           ))}
         </div>
       </div>

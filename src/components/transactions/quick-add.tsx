@@ -288,6 +288,8 @@ function QuickTile({
           )}
         </span>
         <span className="line-clamp-1 type-body font-medium">{tile.title}</span>
+        {/* A space between the name and the hint, so the visible text reads as words inside
+            the button's name ("Custom Any item"); a flex row doesn't render it. */}{" "}
         {hint || state === "saving" ? (
           <span
             className={cn(

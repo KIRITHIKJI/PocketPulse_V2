@@ -50,7 +50,7 @@ test.describe("onboarding and wallets", () => {
       .filter({ has: page.getByText("Default", { exact: true }) });
     await expect(wallet).toContainText("₹1,234.50");
     await expect(
-      page.locator("#main").getByText("Tracked total across wallets · now"),
+      page.locator("#main").getByText("Net tracked total · all accounts · now"),
     ).toBeVisible();
   });
 
@@ -111,7 +111,8 @@ test.describe("categories", () => {
     await expect(food.getByText("Tea", { exact: true })).toBeVisible();
 
     await page.getByRole("tab", { name: "Rules" }).click();
-    await page.getByLabel("Description").fill("masala chai near hostel");
+    // Exact: the "Try a description" section is also labelled with the word.
+    await page.getByLabel("Description", { exact: true }).fill("masala chai near hostel");
     await expect(page.getByText("Food & Drinks › Tea", { exact: true })).toBeVisible();
     await expect(page.getByText("Matched the word “chai”")).toBeVisible();
 

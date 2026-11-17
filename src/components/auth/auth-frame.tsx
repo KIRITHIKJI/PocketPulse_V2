@@ -25,11 +25,12 @@ export function AuthFrame({ title, description, links = [], notice, children }: 
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 py-10">
       <ForgetDevice />
       <div className="flex flex-col gap-1 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="text-muted-foreground">{description}</p>
+        <h1 className="type-title">{title}</h1>
+        <p className="type-body text-text-secondary">{description}</p>
       </div>
       {configured ? (
-        <div className="flex flex-col gap-4 rounded-2xl border bg-card/70 p-5 shadow-sm sm:p-6">
+        // The one form: the only box on the screen.
+        <div className="flex flex-col gap-4 rounded-2xl border border-(--panel-border) bg-(--panel-bg) p-5 shadow-(--panel-shadow) sm:p-6">
           {notice}
           {children}
         </div>
@@ -42,9 +43,12 @@ export function AuthFrame({ title, description, links = [], notice, children }: 
         />
       )}
       {links.map((link) => (
-        <p key={link.href} className="text-center text-sm text-muted-foreground">
+        <p key={link.href} className="text-center type-body text-text-secondary">
           {link.prompt}{" "}
-          <Link href={link.href} className="font-medium text-primary hover:underline">
+          <Link
+            href={link.href}
+            className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4"
+          >
             {link.label}
           </Link>
         </p>
